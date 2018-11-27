@@ -20,6 +20,7 @@
 
 #include <vector>                                       // std::vector
 #include <pthread.h>
+#include <memory>
 #include "butil/scoped_lock.h"
 #include "butil/thread_local.h"
 #include "butil/logging.h"
@@ -27,7 +28,6 @@
 #include "butil/type_traits.h"
 #include "butil/errno.h"
 #include "butil/atomicops.h"
-#include "butil/unique_ptr.h"
 
 namespace butil {
 

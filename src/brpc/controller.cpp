@@ -1276,7 +1276,7 @@ void* Controller::session_local_data() {
         return _session_local_data;
     }
     if (_server) {
-        SimpleDataPool* pool = _server->_session_local_data_pool;
+        auto &pool = _server->_session_local_data_pool;
         if (pool) {
             _session_local_data = pool->Borrow();
             return _session_local_data;

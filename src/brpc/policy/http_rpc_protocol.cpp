@@ -20,7 +20,7 @@
 #include <json2pb/pb_to_json.h>                    // ProtoMessageToJson
 #include <json2pb/json_to_pb.h>                    // JsonToProtoMessage
 
-#include "butil/unique_ptr.h"                       // std::unique_ptr
+#include <memory>                                   // std::unique_ptr
 #include "butil/string_splitter.h"                  // StringMultiSplitter
 #include "butil/string_printf.h"
 #include "butil/time.h"

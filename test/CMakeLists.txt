@@ -133,7 +133,6 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/cacheline_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/class_name_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/endpoint_unittest.cpp
-    ${PROJECT_SOURCE_DIR}/test/unique_ptr_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/errno_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/fd_guard_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/file_watcher_unittest.cpp

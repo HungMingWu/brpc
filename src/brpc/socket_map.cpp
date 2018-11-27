@@ -17,6 +17,7 @@
 
 #include <gflags/gflags.h>
 #include <map>
+#include <range/v3/view/map.hpp>
 #include "bthread/bthread.h"
 #include "butil/time.h"
 #include "butil/scoped_lock.h"
@@ -144,16 +145,15 @@ SocketMap::~SocketMap() {
     if (!_map.empty()) {
         std::ostringstream err;
         int nleft = 0;
-        for (Map::iterator it = _map.begin(); it != _map.end(); ++it) {
-            SingleConnection* sc = &it->second;
-            if ((!sc->socket->Failed() ||
-                 sc->socket->health_check_interval() > 0/*HC enabled*/) &&
-                sc->ref_count != 0) {
+        for (SingleConnection &sc : _map | ranges::view::values) {
+            if ((!sc.socket->Failed() ||
+                 sc.socket->health_check_interval() > 0/*HC enabled*/) &&
+                sc.ref_count != 0) {
                 ++nleft;
                 if (nleft == 0) {
                     err << "Left in SocketMap(" << this << "):";
                 }
-                err << ' ' << *sc->socket;
+                err << ' ' << sc.socket;
             }
         }
         if (nleft) {
@@ -319,16 +319,16 @@ int SocketMap::Find(const SocketMapKey& key, SocketId* id) {
 void SocketMap::List(std::vector<SocketId>* ids) {
     ids->clear();
     BAIDU_SCOPED_LOCK(_mutex);
-    for (Map::iterator it = _map.begin(); it != _map.end(); ++it) {
-        ids->push_back(it->second.socket->id());
+    for (auto &v : _map | ranges::view::values) {
+        ids->push_back(v.socket->id());
     }
 }
 
 void SocketMap::List(std::vector<butil::EndPoint>* pts) {
     pts->clear();
     BAIDU_SCOPED_LOCK(_mutex);
-    for (Map::iterator it = _map.begin(); it != _map.end(); ++it) {
-        pts->push_back(it->second.socket->remote_side());
+    for (auto &v : _map | ranges::view::values) {
+        pts->push_back(v.socket->remote_side());
     }
 }
 
@@ -336,10 +336,9 @@ void SocketMap::ListOrphans(int64_t defer_us, std::vector<SocketMapKey>* out) {
     out->clear();
     const int64_t now = butil::cpuwide_time_us();
     BAIDU_SCOPED_LOCK(_mutex);
-    for (Map::iterator it = _map.begin(); it != _map.end(); ++it) {
-        SingleConnection& sc = it->second;
+    for (auto &[key, sc] : _map) {
         if (sc.ref_count == 0 && now - sc.no_ref_us >= defer_us) {
-            out->push_back(it->first);
+            out->push_back(key);
         }
     }
 }

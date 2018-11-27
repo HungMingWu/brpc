@@ -18,12 +18,12 @@
 
 #include <sys/types.h>
 #include <stddef.h>                         // size_t
+#include <memory>
 #include <gflags/gflags.h>
 #include "butil/compat.h"                   // OS_MACOSX
 #include "butil/macros.h"                   // ARRAY_SIZE
 #include "butil/scoped_lock.h"              // BAIDU_SCOPED_LOCK
 #include "butil/fast_rand.h"
-#include "butil/unique_ptr.h"
 #include "butil/third_party/murmurhash3/murmurhash3.h" // fmix64
 #include "bthread/errno.h"                  // ESTOP
 #include "bthread/butex.h"                  // butex_*

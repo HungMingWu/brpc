@@ -19,7 +19,7 @@
 #include <openssl/err.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-#include "butil/unique_ptr.h"
+#include <memory>
 #include "butil/logging.h"
 #include "butil/ssl_compat.h"
 #include "butil/string_splitter.h"

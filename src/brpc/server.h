@@ -482,7 +482,7 @@ public:
     // never called
     time_t last_start_time() const { return _last_start_time; }
 
-    SimpleDataPool* session_local_data_pool() const { return _session_local_data_pool; }
+    SimpleDataPool* session_local_data_pool() const { return _session_local_data_pool.get(); }
 
     const ThreadLocalOptions& thread_local_options() const { return _tl_options; }
 
@@ -540,7 +540,7 @@ friend class Controller;
     int InitializeOnce();
 
     // Create acceptor with handlers of protocols.
-    Acceptor* BuildAcceptor();
+    std::unique_ptr<Acceptor> BuildAcceptor();
 
     int StartInternal(const butil::ip_t& ip,
                       const PortRange& port_range,
@@ -610,7 +610,7 @@ friend class Controller;
     DISALLOW_COPY_AND_ASSIGN(Server);
 
     // Put frequently-accessed data pool at first.
-    SimpleDataPool* _session_local_data_pool;
+    std::unique_ptr<SimpleDataPool> _session_local_data_pool;
     ThreadLocalOptions _tl_options;
     
     Status _status;
@@ -618,8 +618,8 @@ friend class Controller;
     // number of the virtual services for mapping URL to methods.
     int _virtual_service_count;
     bool _failed_to_set_max_concurrency_of_method;
-    Acceptor* _am;
-    Acceptor* _internal_am;
+    std::unique_ptr<Acceptor> _am;
+    std::unique_ptr<Acceptor> _internal_am;
     
     // Use method->full_name() as key
     MethodMap _method_map;
@@ -635,12 +635,12 @@ friend class Controller;
     google::protobuf::Service* _first_service;
 
     // Store TabInfo of services inheriting Tabbed.
-    TabInfoList* _tab_info_list;
+    std::unique_ptr<TabInfoList> _tab_info_list;
 
     // Store url patterns for paths without exact service names, examples:
     //   *.flv => Method
     //   abc*  => Method
-    RestfulMap* _global_restful_map;
+    std::unique_ptr<RestfulMap> _global_restful_map;
 
     // Default certficate which can't be reloaded
     std::shared_ptr<SocketSSLContext> _default_ssl_ctx;

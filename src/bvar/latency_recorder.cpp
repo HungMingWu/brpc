@@ -16,7 +16,7 @@
 // Date: 2014/09/22 11:57:43
 
 #include <gflags/gflags.h>
-#include "butil/unique_ptr.h"
+#include <memory>
 #include "bvar/latency_recorder.h"
 
 namespace bvar {

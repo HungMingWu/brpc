@@ -17,9 +17,9 @@
 #ifndef  BRPC_POLICY_HTTP_FILE_NAMING_SERVICE
 #define  BRPC_POLICY_HTTP_FILE_NAMING_SERVICE
 
+#include <memory>
 #include "brpc/periodic_naming_service.h"
 #include "brpc/channel.h"
-#include "butil/unique_ptr.h"
 
 
 namespace brpc {

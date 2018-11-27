@@ -16,9 +16,9 @@
 
 #include <gflags/gflags.h>
 #include <fcntl.h>                    // O_CREAT
+#include <memory>
 #include "butil/file_util.h"
 #include "butil/raw_pack.h"
-#include "butil/unique_ptr.h"
 #include "butil/fast_rand.h"
 #include "butil/files/file_enumerator.h"
 #include "bvar/bvar.h"

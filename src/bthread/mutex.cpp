@@ -18,6 +18,7 @@
 
 #include <pthread.h>
 #include <execinfo.h>
+#include <memory>
 #include <dlfcn.h>                               // dlsym
 #include <fcntl.h>                               // O_RDONLY
 #include "butil/atomicops.h"
@@ -30,7 +31,6 @@
 #include "butil/files/file.h"
 #include "butil/files/file_path.h"
 #include "butil/file_util.h"
-#include "butil/unique_ptr.h"
 #include "butil/third_party/murmurhash3/murmurhash3.h"
 #include "butil/logging.h"
 #include "butil/object_pool.h"

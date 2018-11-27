@@ -14,12 +14,12 @@
 
 // Authors: Zhangyi Chen (chenzhangyi01@baidu.com)
 
+#include <memory>
 #include "brpc/stream.h"
 
 #include <gflags/gflags.h>
 #include "butil/time.h"
 #include "butil/object_pool.h"
-#include "butil/unique_ptr.h"
 #include "bthread/unstable.h"
 #include "brpc/log.h"
 #include "brpc/socket.h"

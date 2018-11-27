@@ -21,6 +21,7 @@
 #include <arpa/inet.h>                              // inet_aton
 #include <fcntl.h>                                  // O_CREAT
 #include <sys/stat.h>                               // mkdir
+#include <range/v3/view/map.hpp>
 #include <gflags/gflags.h>
 #include <google/protobuf/descriptor.h>             // ServiceDescriptor
 #include "idl_options.pb.h"                         // option(idl_support)
@@ -304,14 +305,13 @@ void* Server::UpdateDerivedVars(void* arg) {
     }
 
     std::string mprefix = prefix;
-    for (MethodMap::iterator it = server->_method_map.begin();
-         it != server->_method_map.end(); ++it) {
+    for (auto &prop : server->_method_map | ranges::view::values) {
         // Not expose counters on builtin services.
-        if (!it->second.is_builtin_service) {
+        if (!prop.is_builtin_service) {
             mprefix.resize(prefix.size());
             mprefix.push_back('_');
-            bvar::to_underscored_name(&mprefix, it->second.method->full_name());
-            it->second.status->Expose(mprefix);
+            bvar::to_underscored_name(&mprefix, prop.method->full_name());
+            prop.status->Expose(mprefix);
         }
     }
     if (server->options().nshead_service) {
@@ -376,16 +376,11 @@ const std::string& Server::ServiceProperty::service_name() const {
 }
 
 Server::Server(ProfilerLinker)
-    : _session_local_data_pool(NULL)
-    , _status(UNINITIALIZED)
+    : _status(UNINITIALIZED)
     , _builtin_service_count(0)
     , _virtual_service_count(0)
     , _failed_to_set_max_concurrency_of_method(false)
-    , _am(NULL)
-    , _internal_am(NULL)
     , _first_service(NULL)
-    , _tab_info_list(NULL)
-    , _global_restful_map(NULL)
     , _last_start_time(0)
     , _derivative_thread(INVALID_BTHREAD)
     , _keytable_pool(NULL)
@@ -400,9 +395,6 @@ Server::~Server() {
     ClearServices();
     FreeSSLContexts();
 
-    delete _session_local_data_pool;
-    _session_local_data_pool = NULL;
-
     delete _options.nshead_service;
     _options.nshead_service = NULL;
 
@@ -414,16 +406,6 @@ Server::~Server() {
     delete _options.http_master_service;
     _options.http_master_service = NULL;
     
-    delete _am;
-    _am = NULL;
-    delete _internal_am;
-    _internal_am = NULL;
-
-    delete _tab_info_list;
-    _tab_info_list = NULL;
-
-    delete _global_restful_map;
-    _global_restful_map = NULL;
     
     if (!_options.pid_file.empty()) {
         unlink(_options.pid_file.c_str());
@@ -538,7 +520,7 @@ bool is_http_protocol(const char* name) {
     return strcmp(name, "http") == 0 || strcmp(name, "h2") == 0;
 }
 
-Acceptor* Server::BuildAcceptor() {
+std::unique_ptr<Acceptor> Server::BuildAcceptor() {
     std::set<std::string> whitelist;
     for (butil::StringSplitter sp(_options.enabled_protocols.c_str(), ' ');
          sp; ++sp) {
@@ -546,11 +528,7 @@ Acceptor* Server::BuildAcceptor() {
         whitelist.insert(protocol);
     }
     const bool has_whitelist = !whitelist.empty();
-    Acceptor* acceptor = new (std::nothrow) Acceptor(_keytable_pool);
-    if (NULL == acceptor) {
-        LOG(ERROR) << "Fail to new Acceptor";
-        return NULL;
-    }
+    auto acceptor = std::make_unique<Acceptor>(_keytable_pool);
     InputMessageHandler handler;
     std::vector<Protocol> protocols;
     ListProtocols(&protocols);
@@ -574,9 +552,8 @@ Acceptor* Server::BuildAcceptor() {
         handler.name = protocols[i].name;
         if (acceptor->AddHandler(handler) != 0) {
             LOG(ERROR) << "Fail to add handler into Acceptor("
-                       << acceptor << ')';
-            delete acceptor;
-            return NULL;
+                       << acceptor.get() << ')';
+            return nullptr;
         }
     }
     if (!whitelist.empty()) {
@@ -587,9 +564,8 @@ Acceptor* Server::BuildAcceptor() {
             err << *it << ' ';
         }
         err << '\'';
-        delete acceptor;
         LOG(ERROR) << err.str();
-        return NULL;
+        return nullptr;
     }
     return acceptor;
 }
@@ -756,13 +732,8 @@ int Server::StartInternal(const butil::ip_t& ip,
     //   stopped more than once. Reuse or delete previous resources!
 
     if (_options.session_local_data_factory) {
-        if (_session_local_data_pool == NULL) {
-            _session_local_data_pool =
-                new (std::nothrow) SimpleDataPool(_options.session_local_data_factory);
-            if (NULL == _session_local_data_pool) {
-                LOG(ERROR) << "Fail to new SimpleDataPool";
-                return -1;
-            }
+        if (!_session_local_data_pool) {
+            _session_local_data_pool = std::make_unique<SimpleDataPool>(_options.session_local_data_factory);
         } else {
             _session_local_data_pool->Reset(_options.session_local_data_factory);
         }
@@ -887,10 +858,9 @@ int Server::StartInternal(const butil::ip_t& ip,
     }
 
     // Prepare all restful maps
-    for (ServiceMap::const_iterator it = _fullname_service_map.begin();
-         it != _fullname_service_map.end(); ++it) {
-        if (it->second.restful_map) {
-            it->second.restful_map->PrepareForFinding();
+    for (const auto &prop : _fullname_service_map | ranges::view::values) {
+        if (prop.restful_map) {
+            prop.restful_map->PrepareForFinding();
         }
     }
     if (_global_restful_map) {
@@ -907,12 +877,11 @@ int Server::StartInternal(const butil::ip_t& ip,
         bthread_setconcurrency(_options.num_threads);
     }
 
-    for (MethodMap::iterator it = _method_map.begin();
-        it != _method_map.end(); ++it) {
-        if (it->second.is_builtin_service) {
-            it->second.status->SetConcurrencyLimiter(NULL);
+    for (auto &prop : _method_map | ranges::view::values) {
+        if (prop.is_builtin_service) {
+            prop.status->SetConcurrencyLimiter(NULL);
         } else {
-            const AdaptiveMaxConcurrency* amc = &it->second.max_concurrency;
+            const AdaptiveMaxConcurrency* amc = &prop.max_concurrency;
             if (amc->type() == AdaptiveMaxConcurrency::UNLIMITED()) {
                 amc = &_options.method_max_concurrency;
             }
@@ -921,7 +890,7 @@ int Server::StartInternal(const butil::ip_t& ip,
                 LOG(ERROR) << "Fail to create ConcurrencyLimiter for method";
                 return -1;
             }
-            it->second.status->SetConcurrencyLimiter(cl);
+            prop.status->SetConcurrencyLimiter(cl);
         }
     }
     
@@ -957,9 +926,9 @@ int Server::StartInternal(const butil::ip_t& ip,
                 return -1;
             }
         }
-        if (_am == NULL) {
+        if (!_am) {
             _am = BuildAcceptor();
-            if (NULL == _am) {
+            if (!_am) {
                 LOG(ERROR) << "Fail to build acceptor";
                 return -1;
             }
@@ -999,9 +968,9 @@ int Server::StartInternal(const butil::ip_t& ip,
             LOG(ERROR) << "Fail to listen " << internal_point << " (internal)";
             return -1;
         }
-        if (NULL == _internal_am) {
+        if (!_internal_am) {
             _internal_am = BuildAcceptor();
-            if (NULL == _internal_am) {
+            if (!_internal_am) {
                 LOG(ERROR) << "Fail to build internal acceptor";
                 return -1;
             }
@@ -1280,8 +1249,8 @@ int Server::AddServiceInternal(google::protobuf::Service* service,
             
             const std::string& svc_name = mappings[i].path.service_name;
             if (svc_name.empty()) {
-                if (_global_restful_map == NULL) {
-                    _global_restful_map = new RestfulMap("");
+                if (!_global_restful_map) {
+                    _global_restful_map = std::make_unique<RestfulMap>("");
                 }
                 MethodProperty::OpaqueParams params;
                 params.is_tabbed = !!tabbed;
@@ -1354,11 +1323,11 @@ int Server::AddServiceInternal(google::protobuf::Service* service,
     }
 
     if (tabbed) {
-        if (_tab_info_list == NULL) {
-            _tab_info_list = new TabInfoList;
+        if (!_tab_info_list) {
+            _tab_info_list = std::make_unique<TabInfoList>();
         }
         const size_t last_size = _tab_info_list->size();
-        tabbed->GetTabInfo(_tab_info_list);
+        tabbed->GetTabInfo(_tab_info_list.get());
         const size_t cur_size = _tab_info_list->size();
         for (size_t i = last_size; i != cur_size; ++i) {
             const TabInfo& info = (*_tab_info_list)[i];
@@ -1517,19 +1486,17 @@ void Server::ClearServices() {
             << "] which is " << status_str(status());
         return;
     }
-    for (ServiceMap::const_iterator it = _fullname_service_map.begin(); 
-         it != _fullname_service_map.end(); ++it) {
-        if (it->second.ownership == SERVER_OWNS_SERVICE) {
-            delete it->second.service;
+    for (const auto &prop : _fullname_service_map | ranges::view::values) {
+        if (prop.ownership == SERVER_OWNS_SERVICE) {
+            delete prop.service;
         }
-        delete it->second.restful_map;
+        delete prop.restful_map;
     }
-    for (MethodMap::const_iterator it = _method_map.begin();
-         it != _method_map.end(); ++it) {
-        if (it->second.own_method_status) {
-            delete it->second.status;
+    for (const auto &prop : _method_map | ranges::view::values) {
+        if (prop.own_method_status) {
+            delete prop.status;
         }
-        delete it->second.http_url;
+        delete prop.http_url;
     }
     _fullname_service_map.clear();
     _service_map.clear();
@@ -1569,10 +1536,9 @@ void Server::ListServices(std::vector<google::protobuf::Service*> *services) {
     }
     services->clear();
     services->reserve(service_count());
-    for (ServiceMap::const_iterator it = _fullname_service_map.begin();
-         it != _fullname_service_map.end(); ++it) {
-        if (it->second.is_user_service()) {
-            services->push_back(it->second.service);
+    for (const auto &prop : _fullname_service_map | ranges::view::values) {
+        if (prop.is_user_service()) {
+            services->push_back(prop.service);
         }
     }
 }
@@ -1583,13 +1549,12 @@ void Server::GenerateVersionIfNeeded() {
     }
     int extra_count = !!_options.nshead_service + !!_options.rtmp_service + !!_options.thrift_service;
     _version.reserve((extra_count + service_count()) * 20);
-    for (ServiceMap::const_iterator it = _fullname_service_map.begin();
-         it != _fullname_service_map.end(); ++it) {
-        if (it->second.is_user_service()) {
+    for (const auto &prop : _fullname_service_map | ranges::view::values) {
+        if (prop.is_user_service()) {
             if (!_version.empty()) {
                 _version.push_back('+');
             }
-            _version.append(butil::class_name_str(*it->second.service));
+            _version.append(butil::class_name_str(*prop.service));
         }
     }
     if (_options.nshead_service) {
@@ -1979,9 +1944,7 @@ bool Server::ResetCertMappings(CertMaps& bg, const SSLContextMap& ctx_map) {
     bg.cert_map.clear();
     bg.wildcard_cert_map.clear();
 
-    for (SSLContextMap::const_iterator it =
-                 ctx_map.begin(); it != ctx_map.end(); ++it) {
-        const SSLContext& ssl_ctx = it->second;
+    for (const auto &ssl_ctx : ctx_map | ranges::view::values) {
         for (size_t i = 0; i < ssl_ctx.filters.size(); ++i) {
             const char* hostname = ssl_ctx.filters[i].c_str();
             CertMap* cmap = NULL;

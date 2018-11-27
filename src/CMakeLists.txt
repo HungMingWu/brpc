@@ -11,6 +11,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 
 add_library(BUTIL_LIB OBJECT ${BUTIL_SOURCES})
 add_library(OBJ_LIB OBJECT ${SOURCES})
+target_link_libraries(OBJ_LIB PRIVATE range-v3)
 
 # shared library needs POSITION_INDEPENDENT_CODE
 set_property(TARGET ${OBJ_LIB} PROPERTY POSITION_INDEPENDENT_CODE 1)

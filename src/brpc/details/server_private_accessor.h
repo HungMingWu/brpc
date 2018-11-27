@@ -93,10 +93,10 @@ public:
         }
     }
 
-    Acceptor* acceptor() const { return _server->_am; }
+    Acceptor* acceptor() const { return _server->_am.get(); }
 
     RestfulMap* global_restful_map() const
-    { return _server->_global_restful_map; }
+    { return _server->_global_restful_map.get(); }
     
 private:
     const Server* _server;

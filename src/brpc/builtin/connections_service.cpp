@@ -216,7 +216,7 @@ void ConnectionsService::PrintConnections(
                 }
             }
             const char* pref_prot = "-";
-            if (ptr->user() == server->_am) {
+            if (ptr->user() == server->_am.get()) {
                 pref_prot = server->_am->NameOfProtocol(pref_index);
                 // Special treatment for nshead services. Notice that
                 // pref_index is comparable to ProtocolType after r31951
@@ -329,8 +329,8 @@ void ConnectionsService::default_method(
     ClosureGuard done_guard(done);
     Controller *cntl = static_cast<Controller*>(cntl_base);
     const Server* server = cntl->server();
-    Acceptor* am = server->_am;
-    Acceptor* internal_am = server->_internal_am;
+    auto &am = server->_am;
+    auto &internal_am = server->_internal_am;
     butil::IOBufBuilder os;
     const bool use_html = UseHTML(cntl->http_request());
     cntl->http_response().set_content_type(

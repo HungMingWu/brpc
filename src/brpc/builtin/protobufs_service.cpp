@@ -15,6 +15,7 @@
 // Authors: Ge,Jun (gejun@baidu.com)
 
 #include <google/protobuf/descriptor.h>     // ServiceDescriptor
+#include <range/v3/view/map.hpp>
 #include "brpc/controller.h"           // Controller
 #include "brpc/server.h"               // Server
 #include "brpc/closure_guard.h"        // ClosureGuard
@@ -82,11 +83,11 @@ void ProtobufsService::default_method(::google::protobuf::RpcController* cntl_ba
             os << "<!DOCTYPE html><html><head></head><body>\n";
         }    
         // list all structures.
-        for (Map::iterator it = _map.begin(); it != _map.end(); ++it) {
+        for (const auto &key : _map | ranges::view::keys) {
             if (use_html) {
-                os << "<p><a href=\"/protobufs/" << it->first << "\">";
+                os << "<p><a href=\"/protobufs/" << key << "\">";
             }
-            os << it->first;
+            os << key;
             if (use_html) {
                 os << "</a></p>";
             }
