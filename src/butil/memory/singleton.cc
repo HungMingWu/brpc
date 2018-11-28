@@ -8,7 +8,7 @@
 namespace butil {
 namespace internal {
 
-subtle::AtomicWord WaitForInstance(subtle::AtomicWord* instance) {
+intptr_t WaitForInstance(std::atomic_intptr_t * instance) {
   // Handle the race. Another thread beat us and either:
   // - Has the object in BeingCreated state
   // - Already has the object created...
@@ -16,12 +16,12 @@ subtle::AtomicWord WaitForInstance(subtle::AtomicWord* instance) {
   // Unless your constructor can be very time consuming, it is very unlikely
   // to hit this race.  When it does, we just spin and yield the thread until
   // the object has been created.
-  subtle::AtomicWord value;
+  intptr_t value;
   while (true) {
     // The load has acquire memory ordering as the thread which reads the
     // instance pointer must acquire visibility over the associated data.
     // The pairing Release_Store operation is in Singleton::get().
-    value = subtle::Acquire_Load(instance);
+    value = instance->load(std::memory_order_acquire);
     if (value != kBeingCreatedMarker)
       break;
     PlatformThread::YieldCurrentThread();

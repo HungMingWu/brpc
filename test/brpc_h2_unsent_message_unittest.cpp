@@ -3,10 +3,10 @@
 
 // Date: Tue Oct 9 20:27:18 CST 2018
 
+#include <atomic>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "bthread/bthread.h"
-#include "butil/atomicops.h"
 #include "brpc/policy/http_rpc_protocol.h"
 #include "brpc/policy/http2_rpc_protocol.h"
 #include "butil/gperftools_profiler.h"

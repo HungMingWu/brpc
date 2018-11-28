@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/descriptor.h>
+#include <atomic>
 #include "butil/time.h"
 #include "butil/macros.h"
 #include "butil/logging.h"
@@ -66,7 +67,7 @@ public:
         }
     }
 private:
-    butil::atomic<int> _c;
+    std::atomic<int> _c;
 };
 
 static std::string MOCK_CREDENTIAL = "mock credential";
@@ -78,7 +79,7 @@ public:
 
     int GenerateCredential(std::string* auth_str) const {
         *auth_str = MOCK_CREDENTIAL;
-        count.fetch_add(1, butil::memory_order_relaxed);
+        count.fetch_add(1, std::memory_order_relaxed);
         return 0;
     }
 
@@ -92,7 +93,7 @@ public:
         ctx->set_is_service(true);
         return 0;
     }
-    mutable butil::atomic<int32_t> count;
+    mutable std::atomic<int32_t> count;
 };
 
 static bool VerifyMyRequest(const brpc::InputMessageBase* msg_base) {

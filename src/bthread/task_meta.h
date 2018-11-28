@@ -20,8 +20,8 @@
 #define BTHREAD_TASK_META_H
 
 #include <pthread.h>                 // pthread_spin_init
+#include <atomic>
 #include "bthread/butex.h"           // butex_construct/destruct
-#include "butil/atomicops.h"          // butil::atomic
 #include "bthread/types.h"           // bthread_attr_t
 #include "bthread/stack.h"           // ContextualStack
 
@@ -47,7 +47,7 @@ const static LocalStorage LOCAL_STORAGE_INIT = BTHREAD_LOCAL_STORAGE_INITIALIZER
 
 struct TaskMeta {
     // [Not Reset]
-    butil::atomic<ButexWaiter*> current_waiter;
+    std::atomic<ButexWaiter*> current_waiter;
     uint64_t current_sleep;
 
     // A builtin flag to mark if the thread is stopping.

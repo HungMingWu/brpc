@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <gtest/gtest.h>
+#include <atomic>
 #include "butil/time.h"
 #include "butil/macros.h"
 #include "butil/scoped_lock.h"
@@ -41,7 +42,7 @@ struct BAIDU_CACHELINE_ALIGNMENT ClientMeta {
 struct BAIDU_CACHELINE_ALIGNMENT SocketMeta {
     int fd;
     int epfd;
-    butil::atomic<int> req;
+    std::atomic<int> req;
     char* buf;
     size_t buf_cap;
     size_t bytes;
@@ -81,11 +82,11 @@ void* process_thread(void* arg) {
             }
         } while (1);
         
-        if (m->req.exchange(0, butil::memory_order_release) == 1) {
+        if (m->req.exchange(0, std::memory_order_release) == 1) {
             // no events during reading.
             break;
         }
-        if (m->req.fetch_add(1, butil::memory_order_relaxed) != 0) {
+        if (m->req.fetch_add(1, std::memory_order_relaxed) != 0) {
             // someone else takes the fd.
             break;
         }
@@ -130,7 +131,7 @@ void* epoll_thread(void* arg) {
 #elif defined(OS_MACOSX)
             SocketMeta* m = (SocketMeta*)e[i].udata;
 #endif
-            if (m->req.fetch_add(1, butil::memory_order_acquire) == 0) {
+            if (m->req.fetch_add(1, std::memory_order_acquire) == 0) {
                 bthread_t th;
                 bthread_start_urgent(
                     &th, &BTHREAD_ATTR_SMALL, process_thread, m);

@@ -12,11 +12,11 @@ void CancellationFlag::Set() {
 #if !defined(NDEBUG)
   DCHECK_EQ(set_on_, PlatformThread::CurrentId());
 #endif
-  butil::subtle::Release_Store(&flag_, 1);
+  flag_.store(1, std::memory_order_release);
 }
 
 bool CancellationFlag::IsSet() const {
-  return butil::subtle::Acquire_Load(&flag_) != 0;
+  return flag_.load(std::memory_order_acquire) != 0;
 }
 
 }  // namespace butil

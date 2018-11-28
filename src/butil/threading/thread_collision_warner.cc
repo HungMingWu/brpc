@@ -13,13 +13,13 @@ void DCheckAsserter::warn() {
   NOTREACHED() << "Thread Collision";
 }
 
-static subtle::Atomic32 CurrentThread() {
+static int32_t CurrentThread() {
   const PlatformThreadId current_thread_id = PlatformThread::CurrentId();
   // We need to get the thread id into an atomic data type. This might be a
   // truncating conversion, but any loss-of-information just increases the
   // chance of a fault negative, not a false positive.
-  const subtle::Atomic32 atomic_thread_id =
-      static_cast<subtle::Atomic32>(current_thread_id);
+  const int32_t atomic_thread_id =
+      static_cast<int32_t>(current_thread_id);
 
   return atomic_thread_id;
 }
@@ -28,36 +28,40 @@ void ThreadCollisionWarner::EnterSelf() {
   // If the active thread is 0 then I'll write the current thread ID
   // if two or more threads arrive here only one will succeed to
   // write on valid_thread_id_ the current thread ID.
-  subtle::Atomic32 current_thread_id = CurrentThread();
+  int32_t current_thread_id = CurrentThread();
 
-  int previous_value = subtle::NoBarrier_CompareAndSwap(&valid_thread_id_,
-                                                        0,
-                                                        current_thread_id);
+  int32_t previous_value = 0;
+  valid_thread_id_.compare_exchange_strong(previous_value, current_thread_id,
+							std::memory_order_relaxed,
+							std::memory_order_relaxed);
   if (previous_value != 0 && previous_value != current_thread_id) {
     // gotcha! a thread is trying to use the same class and that is
     // not current thread.
     asserter_->warn();
   }
 
-  subtle::NoBarrier_AtomicIncrement(&counter_, 1);
+  counter_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void ThreadCollisionWarner::Enter() {
-  subtle::Atomic32 current_thread_id = CurrentThread();
+  int32_t current_thread_id = CurrentThread();
 
-  if (subtle::NoBarrier_CompareAndSwap(&valid_thread_id_,
-                                       0,
-                                       current_thread_id) != 0) {
+  int32_t previous_value = 0;
+  if (valid_thread_id_.compare_exchange_strong(
+                                       previous_value,
+                                       current_thread_id,
+                                       std::memory_order_relaxed,
+                                       std::memory_order_relaxed)) {
     // gotcha! another thread is trying to use the same class.
     asserter_->warn();
   }
 
-  subtle::NoBarrier_AtomicIncrement(&counter_, 1);
+  counter_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void ThreadCollisionWarner::Leave() {
-  if (subtle::Barrier_AtomicIncrement(&counter_, -1) == 0) {
-    subtle::NoBarrier_Store(&valid_thread_id_, 0);
+  if (counter_.fetch_sub(1, std::memory_order_acq_rel) == 0) {
+    valid_thread_id_.store(0, std::memory_order_relaxed);
   }
 }
 

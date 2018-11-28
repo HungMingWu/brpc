@@ -3,6 +3,7 @@
 // Date: Sun Jul 13 15:04:18 CST 2014
 
 #include <execinfo.h>
+#include <atomic>
 #include <gtest/gtest.h>
 #include "butil/time.h"
 #include "butil/macros.h"
@@ -84,7 +85,7 @@ TEST_F(BthreadTest, call_bthread_functions_before_tls_created) {
     ASSERT_EQ(0UL, bthread_self());
 }
 
-butil::atomic<bool> stop(false);
+std::atomic<bool> stop(false);
 
 void* sleep_for_awhile(void* arg) {
     LOG(INFO) << "sleep_for_awhile(" << arg << ")";
@@ -247,7 +248,7 @@ TEST_F(BthreadTest, errno_not_changed) {
 static long sleep_in_adding_func = 0;
 
 void* adding_func(void* arg) {
-    butil::atomic<size_t>* s = (butil::atomic<size_t>*)arg;
+    std::atomic<size_t>* s = (std::atomic<size_t>*)arg;
     if (sleep_in_adding_func > 0) {
         long t1 = 0;
         if (10000 == s->fetch_add(1)) {
@@ -273,7 +274,7 @@ TEST_F(BthreadTest, small_threads) {
             snprintf(prof_name, sizeof(prof_name), "smallthread_nosleep.prof");
         }
 
-        butil::atomic<size_t> s(0);
+        std::atomic<size_t> s(0);
         size_t N = (sleep_in_adding_func ? 40000 : 100000);
         std::vector<bthread_t> th;
         th.reserve(N);
@@ -309,7 +310,7 @@ TEST_F(BthreadTest, small_threads) {
 }
 
 void* bthread_starter(void* void_counter) {
-    while (!stop.load(butil::memory_order_relaxed)) {
+    while (!stop.load(std::memory_order_relaxed)) {
         bthread_t th;
         EXPECT_EQ(0, bthread_start_urgent(&th, NULL, adding_func, void_counter));
     }
@@ -318,7 +319,7 @@ void* bthread_starter(void* void_counter) {
 
 struct BAIDU_CACHELINE_ALIGNMENT AlignedCounter {
     AlignedCounter() : value(0) {}
-    butil::atomic<size_t> value;
+    std::atomic<size_t> value;
 };
 
 TEST_F(BthreadTest, start_bthreads_frequently) {

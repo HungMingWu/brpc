@@ -48,7 +48,7 @@ private:
     butil::Mutex _mutex;
     unsigned _capacity;
     unsigned _size;
-    butil::atomic<unsigned> _ncreated;
+    std::atomic<unsigned> _ncreated;
     void** _pool;
     const DataFactory* _factory;
 };
@@ -76,7 +76,7 @@ inline void SimpleDataPool::Reset(const DataFactory* factory) {
         saved_factory = _factory;
         _capacity = 0;
         _size = 0;
-        _ncreated.store(0, butil::memory_order_relaxed);
+        _ncreated.store(0, std::memory_order_relaxed);
         _pool = NULL;
         _factory = factory;
     }
@@ -117,7 +117,7 @@ inline void SimpleDataPool::Reserve(unsigned n) {
         if (data == NULL) {
             break;
         }
-        _ncreated.fetch_add(1,  butil::memory_order_relaxed);
+        _ncreated.fetch_add(1,  std::memory_order_relaxed);
         _pool[_size++] = data;
     }
 }
@@ -131,7 +131,7 @@ inline void* SimpleDataPool::Borrow() {
     }
     void* data = _factory->CreateData();
     if (data) {
-        _ncreated.fetch_add(1,  butil::memory_order_relaxed);
+        _ncreated.fetch_add(1,  std::memory_order_relaxed);
     }
     return data;
 }
@@ -159,7 +159,7 @@ inline void SimpleDataPool::Return(void* data) {
 }
 
 inline SimpleDataPool::Stat SimpleDataPool::stat() const {
-    Stat s = { _size, _ncreated.load(butil::memory_order_relaxed) };
+    Stat s = { _size, _ncreated.load(std::memory_order_relaxed) };
     return s;
 }
 

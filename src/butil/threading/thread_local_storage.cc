@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <atomic>
 #include "butil/threading/thread_local_storage.h"
 
-#include "butil/atomicops.h"
 #include "butil/logging.h"
 
 using butil::internal::PlatformThreadLocalStorage;
@@ -18,7 +18,7 @@ namespace {
 // Chromium consumers.
 
 // g_native_tls_key is the one native TLS that we use.  It stores our table.
-butil::subtle::AtomicWord g_native_tls_key =
+std::atomic_intptr_t g_native_tls_key =
     PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES;
 
 // g_last_used_tls_key is the high-water-mark of allocated thread local storage.
@@ -28,7 +28,7 @@ butil::subtle::AtomicWord g_native_tls_key =
 // instance of ThreadLocalStorage::Slot has been freed (i.e., destructor called,
 // etc.).  This reserved use of 0 is then stated as the initial value of
 // g_last_used_tls_key, so that the first issued index will be 1.
-butil::subtle::Atomic32 g_last_used_tls_key = 0;
+std::atomic_int32_t g_last_used_tls_key { 0 };
 
 // The maximum number of 'slots' in our thread local storage stack.
 const int kThreadLocalStorageSize = 256;
@@ -56,8 +56,7 @@ volatile butil::ThreadLocalStorage::TLSDestructorFunc
 // As a result, we use Atomics, and avoid anything (like a singleton) that might
 // require memory allocations.
 void** ConstructTlsVector() {
-  PlatformThreadLocalStorage::TLSKey key =
-      butil::subtle::NoBarrier_Load(&g_native_tls_key);
+  PlatformThreadLocalStorage::TLSKey key = g_native_tls_key.load(std::memory_order_relaxed);
   if (key == PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES) {
     CHECK(PlatformThreadLocalStorage::AllocTLS(&key));
 
@@ -75,14 +74,13 @@ void** ConstructTlsVector() {
     // Atomically test-and-set the tls_key.  If the key is
     // TLS_KEY_OUT_OF_INDEXES, go ahead and set it.  Otherwise, do nothing, as
     // another thread already did our dirty work.
-    if (PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES !=
-        butil::subtle::NoBarrier_CompareAndSwap(&g_native_tls_key,
-            PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES, key)) {
+    intptr_t old_value = PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES;
+    if (!g_native_tls_key.compare_exchange_strong(old_value, key, std::memory_order_relaxed, std::memory_order_relaxed)) {
       // We've been shortcut. Another thread replaced g_native_tls_key first so
       // we need to destroy our index and use the one the other thread got
       // first.
       PlatformThreadLocalStorage::FreeTLS(key);
-      key = butil::subtle::NoBarrier_Load(&g_native_tls_key);
+      key = g_native_tls_key.load(std::memory_order_relaxed);
     }
   }
   CHECK(!PlatformThreadLocalStorage::GetTLSValue(key));
@@ -122,8 +120,7 @@ void OnThreadExitInternal(void* value) {
   void* stack_allocated_tls_data[kThreadLocalStorageSize];
   memcpy(stack_allocated_tls_data, tls_data, sizeof(stack_allocated_tls_data));
   // Ensure that any re-entrant calls change the temp version.
-  PlatformThreadLocalStorage::TLSKey key =
-      butil::subtle::NoBarrier_Load(&g_native_tls_key);
+  PlatformThreadLocalStorage::TLSKey key = g_native_tls_key.load(std::memory_order_relaxed);
   PlatformThreadLocalStorage::SetTLSValue(key, stack_allocated_tls_data);
   delete[] tls_data;  // Our last dependence on an allocator.
 
@@ -137,8 +134,8 @@ void OnThreadExitInternal(void* value) {
     // allocator) and should also be destroyed last.  If we get the order wrong,
     // then we'll itterate several more times, so it is really not that
     // critical (but it might help).
-    butil::subtle::Atomic32 last_used_tls_key =
-        butil::subtle::NoBarrier_Load(&g_last_used_tls_key);
+    int32_t last_used_tls_key =
+        g_last_used_tls_key.load(std::memory_order_relaxed);
     for (int slot = last_used_tls_key; slot > 0; --slot) {
       void* value = stack_allocated_tls_data[slot];
       if (value == NULL)
@@ -173,8 +170,7 @@ namespace internal {
 
 #if defined(OS_WIN)
 void PlatformThreadLocalStorage::OnThreadExit() {
-  PlatformThreadLocalStorage::TLSKey key =
-      butil::subtle::NoBarrier_Load(&g_native_tls_key);
+  PlatformThreadLocalStorage::TLSKey key = g_native_tls_key.load(std::memory_order_relaxed);
   if (key == PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES)
     return;
   void *tls_data = GetTLSValue(key);
@@ -198,14 +194,13 @@ ThreadLocalStorage::Slot::Slot(TLSDestructorFunc destructor) {
 }
 
 bool ThreadLocalStorage::StaticSlot::Initialize(TLSDestructorFunc destructor) {
-  PlatformThreadLocalStorage::TLSKey key =
-      butil::subtle::NoBarrier_Load(&g_native_tls_key);
+  PlatformThreadLocalStorage::TLSKey key = g_native_tls_key.load(std::memory_order_relaxed);
   if (key == PlatformThreadLocalStorage::TLS_KEY_OUT_OF_INDEXES ||
       !PlatformThreadLocalStorage::GetTLSValue(key))
     ConstructTlsVector();
 
   // Grab a new slot.
-  slot_ = butil::subtle::NoBarrier_AtomicIncrement(&g_last_used_tls_key, 1);
+  slot_ = 1 + g_last_used_tls_key.fetch_add(1, std::memory_order_relaxed);
   DCHECK_GT(slot_, 0);
   CHECK_LT(slot_, kThreadLocalStorageSize);
 
@@ -228,7 +223,7 @@ void ThreadLocalStorage::StaticSlot::Free() {
 void* ThreadLocalStorage::StaticSlot::Get() const {
   void** tls_data = static_cast<void**>(
       PlatformThreadLocalStorage::GetTLSValue(
-          butil::subtle::NoBarrier_Load(&g_native_tls_key)));
+          g_native_tls_key.load(std::memory_order_relaxed)));
   if (!tls_data)
     tls_data = ConstructTlsVector();
   DCHECK_GT(slot_, 0);
@@ -239,7 +234,7 @@ void* ThreadLocalStorage::StaticSlot::Get() const {
 void ThreadLocalStorage::StaticSlot::Set(void* value) {
   void** tls_data = static_cast<void**>(
       PlatformThreadLocalStorage::GetTLSValue(
-          butil::subtle::NoBarrier_Load(&g_native_tls_key)));
+          g_native_tls_key.load(std::memory_order_relaxed)));
   if (!tls_data)
     tls_data = ConstructTlsVector();
   DCHECK_GT(slot_, 0);

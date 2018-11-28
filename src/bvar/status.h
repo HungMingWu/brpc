@@ -18,8 +18,8 @@
 #ifndef  BVAR_STATUS_H
 #define  BVAR_STATUS_H
 
+#include <atomic>
 #include <string>                       // std::string
-#include "butil/atomicops.h"
 #include "butil/type_traits.h"
 #include "butil/string_printf.h"
 #include "butil/synchronization/lock.h"
@@ -77,8 +77,8 @@ public:
 
 private:
     T _value;
-    // We use lock rather than butil::atomic for generic values because
-    // butil::atomic requires the type to be memcpy-able (POD basically)
+    // We use lock rather than std::atomic for generic values because
+    // std::atomic requires the type to be memcpy-able (POD basically)
     mutable butil::Lock _lock;
 };
 
@@ -109,15 +109,15 @@ public:
 #endif
     
     T get_value() const {
-        return _value.load(butil::memory_order_relaxed);
+        return _value.load(std::memory_order_relaxed);
     }
     
     void set_value(const T& value) {
-        _value.store(value, butil::memory_order_relaxed);
+        _value.store(value, std::memory_order_relaxed);
     }
 
 private:
-    butil::atomic<T> _value;
+    std::atomic<T> _value;
 };
 
 // Specialize for std::string, adding a printf-style set_value().

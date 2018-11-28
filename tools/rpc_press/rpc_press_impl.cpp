@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <pthread.h>
+#include <atomic>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -205,7 +206,7 @@ void RpcPress::handle_response(brpc::Controller* cntl,
     delete cntl;
 }
 
-static butil::atomic<int> g_thread_count(0);
+static std::atomic<int> g_thread_count(0);
 
 void RpcPress::sync_client() {
     double req_rate = _options.test_req_rate / _options.test_thread_num;
@@ -214,7 +215,7 @@ void RpcPress::sync_client() {
         LOG(ERROR) << "nothing to send!";
         return;
     }
-    const int thread_index = g_thread_count.fetch_add(1, butil::memory_order_relaxed);
+    const int thread_index = g_thread_count.fetch_add(1, std::memory_order_relaxed);
     int msg_index = thread_index;
     std::deque<int64_t> timeq;
     size_t MAX_QUEUE_SIZE = (size_t)req_rate;

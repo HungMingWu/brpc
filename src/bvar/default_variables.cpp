@@ -369,11 +369,11 @@ static int get_fd_count(int limit) {
 extern PassiveStatus<int> g_fd_num;
 
 const int MAX_FD_SCAN_COUNT = 10003;
-static butil::static_atomic<bool> s_ever_reached_fd_scan_limit = BUTIL_STATIC_ATOMIC_INIT(false);
+static std::atomic<bool> s_ever_reached_fd_scan_limit { false };
 class FdReader {
 public:
     bool operator()(int* stat) const {
-        if (s_ever_reached_fd_scan_limit.load(butil::memory_order_relaxed)) {
+        if (s_ever_reached_fd_scan_limit.load(std::memory_order_relaxed)) {
             // Never update the count again.
             return false;
         }
@@ -383,7 +383,7 @@ public:
         }
         if (count == MAX_FD_SCAN_COUNT - 2 
                 && s_ever_reached_fd_scan_limit.exchange(
-                        true, butil::memory_order_relaxed) == false) {
+                        true, std::memory_order_relaxed) == false) {
             // Rename the bvar to notify user.
             g_fd_num.hide();
             g_fd_num.expose("process_fd_num_too_many");

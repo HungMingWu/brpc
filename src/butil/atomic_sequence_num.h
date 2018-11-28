@@ -5,7 +5,7 @@
 #ifndef BUTIL_ATOMIC_SEQUENCE_NUM_H_
 #define BUTIL_ATOMIC_SEQUENCE_NUM_H_
 
-#include "butil/atomicops.h"
+#include <atomic>
 #include "butil/basictypes.h"
 
 namespace butil {
@@ -22,18 +22,17 @@ class AtomicSequenceNumber;
 class StaticAtomicSequenceNumber {
  public:
   inline int GetNext() {
-    return static_cast<int>(
-        butil::subtle::NoBarrier_AtomicIncrement(&seq_, 1) - 1);
+    return static_cast<int>(seq_.fetch_add(1));
   }
 
  private:
   friend class AtomicSequenceNumber;
 
   inline void Reset() {
-    butil::subtle::Release_Store(&seq_, 0);
+    seq_.store(0, std::memory_order_release);
   }
 
-  butil::subtle::Atomic32 seq_;
+  std::atomic_int32_t seq_;
 };
 
 // AtomicSequenceNumber that can be stored and used safely (i.e. its fields are

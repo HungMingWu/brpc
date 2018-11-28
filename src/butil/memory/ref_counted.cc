@@ -10,8 +10,7 @@ namespace butil {
 namespace subtle {
 
 bool RefCountedThreadSafeBase::HasOneRef() const {
-  return AtomicRefCountIsOne(
-      &const_cast<RefCountedThreadSafeBase*>(this)->ref_count_);
+  return ref_count_.load(std::memory_order_acquire) == 1;
 }
 
 RefCountedThreadSafeBase::RefCountedThreadSafeBase() : ref_count_(0) {
@@ -31,15 +30,15 @@ void RefCountedThreadSafeBase::AddRef() const {
 #ifndef NDEBUG
   DCHECK(!in_dtor_);
 #endif
-  AtomicRefCountInc(&ref_count_);
+  ref_count_.fetch_add(1, std::memory_order_relaxed);
 }
 
 bool RefCountedThreadSafeBase::Release() const {
 #ifndef NDEBUG
   DCHECK(!in_dtor_);
-  DCHECK(!AtomicRefCountIsZero(&ref_count_));
+  DCHECK(!ref_count_.load(std::memory_order_acquire) == 0);
 #endif
-  if (!AtomicRefCountDec(&ref_count_)) {
+  if (ref_count_.fetch_sub(1, std::memory_order_relaxed) == 1) {
 #ifndef NDEBUG
     in_dtor_ = true;
 #endif

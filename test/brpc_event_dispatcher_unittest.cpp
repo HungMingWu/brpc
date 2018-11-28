@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <gtest/gtest.h>
+#include <atomic>
 #include "butil/gperftools_profiler.h"
 #include "butil/time.h"
 #include "butil/macros.h"
@@ -30,9 +31,9 @@ TEST_F(EventDispatcherTest, has_epollrdhup) {
 }
 
 TEST_F(EventDispatcherTest, versioned_ref) {
-    butil::atomic<uint64_t> versioned_ref(2);
+    std::atomic<uint64_t> versioned_ref(2);
     versioned_ref.fetch_add(brpc::MakeVRef(0, -1),
-                            butil::memory_order_release);
+                            std::memory_order_release);
     ASSERT_EQ(brpc::MakeVRef(1, 1), versioned_ref);
 }
 

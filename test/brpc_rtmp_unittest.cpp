@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <atomic>
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include "butil/time.h"
@@ -186,7 +187,7 @@ private:
         return NULL;
     }
 
-    butil::atomic<State> _state;
+    std::atomic<State> _state;
     bthread_t _play_thread;
     int64_t _sleep_ms;
 };

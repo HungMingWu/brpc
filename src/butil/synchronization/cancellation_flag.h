@@ -5,8 +5,8 @@
 #ifndef BUTIL_SYNCHRONIZATION_CANCELLATION_FLAG_H_
 #define BUTIL_SYNCHRONIZATION_CANCELLATION_FLAG_H_
 
+#include <atomic>
 #include "butil/base_export.h"
-#include "butil/atomicops.h"
 #include "butil/threading/platform_thread.h"
 
 namespace butil {
@@ -30,7 +30,7 @@ class BUTIL_EXPORT CancellationFlag {
   bool IsSet() const;  // Returns true iff the flag was set.
 
  private:
-  butil::subtle::Atomic32 flag_;
+  std::atomic_int32_t flag_;
 #if !defined(NDEBUG)
   PlatformThreadId set_on_;
 #endif

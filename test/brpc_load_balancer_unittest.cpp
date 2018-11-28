@@ -3,6 +3,7 @@
 
 // Date: Sun Jul 13 15:04:18 CST 2014
 
+#include <atomic>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <map>
@@ -118,7 +119,7 @@ static void ValidateWeightTree(
         }
     }
     for (size_t i = 0; i < weight_tree.size(); ++i) {
-        const int64_t left = weight_tree[i].left->load(butil::memory_order_relaxed);
+        const int64_t left = weight_tree[i].left->load(std::memory_order_relaxed);
         size_t left_child = i * 2 + 1;
         if (left_child < weight_tree.size()) {
             ASSERT_EQ(weight_sum[left_child], left) << "i=" << i;
@@ -228,10 +229,10 @@ void* select_server(void* arg) {
 }
 
 brpc::SocketId recycled_sockets[1024];
-butil::atomic<size_t> nrecycle(0);
+std::atomic<size_t> nrecycle(0);
 class SaveRecycle : public brpc::SocketUser {
     void BeforeRecycle(brpc::Socket* s) {
-        recycled_sockets[nrecycle.fetch_add(1, butil::memory_order_relaxed)] = s->id();
+        recycled_sockets[nrecycle.fetch_add(1, std::memory_order_relaxed)] = s->id();
         delete this;
     }
 };

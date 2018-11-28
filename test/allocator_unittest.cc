@@ -82,75 +82,6 @@ static int NextSize(int size) {
   }
 }
 
-template <class AtomicType>
-static void TestAtomicIncrement() {
-  // For now, we just test single threaded execution
-
-  // use a guard value to make sure the NoBarrier_AtomicIncrement doesn't go
-  // outside the expected address bounds.  This is in particular to
-  // test that some future change to the asm code doesn't cause the
-  // 32-bit NoBarrier_AtomicIncrement to do the wrong thing on 64-bit machines.
-  struct {
-    AtomicType prev_word;
-    AtomicType count;
-    AtomicType next_word;
-  } s;
-
-  AtomicType prev_word_value, next_word_value;
-  memset(&prev_word_value, 0xFF, sizeof(AtomicType));
-  memset(&next_word_value, 0xEE, sizeof(AtomicType));
-
-  s.prev_word = prev_word_value;
-  s.count = 0;
-  s.next_word = next_word_value;
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, 1), 1);
-  EXPECT_EQ(s.count, 1);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, 2), 3);
-  EXPECT_EQ(s.count, 3);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, 3), 6);
-  EXPECT_EQ(s.count, 6);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, -3), 3);
-  EXPECT_EQ(s.count, 3);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, -2), 1);
-  EXPECT_EQ(s.count, 1);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, -1), 0);
-  EXPECT_EQ(s.count, 0);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, -1), -1);
-  EXPECT_EQ(s.count, -1);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, -4), -5);
-  EXPECT_EQ(s.count, -5);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-
-  EXPECT_EQ(butil::subtle::NoBarrier_AtomicIncrement(&s.count, 5), 0);
-  EXPECT_EQ(s.count, 0);
-  EXPECT_EQ(s.prev_word, prev_word_value);
-  EXPECT_EQ(s.next_word, next_word_value);
-}
-
-
 #define NUM_BITS(T) (sizeof(T) * 8)
 
 
@@ -334,22 +265,6 @@ static void TestNothrowNew(void* (*func)(size_t)) {
 }  // namespace
 
 //-----------------------------------------------------------------------------
-
-TEST(Atomics, AtomicIncrementWord) {
-    TestAtomicIncrement<butil::subtle::AtomicWord>();
-}
-
-TEST(Atomics, AtomicIncrement32) {
-    TestAtomicIncrement<butil::subtle::Atomic32>();
-}
-
-TEST(Atomics, AtomicOpsWord) {
-    TestAtomicIncrement<butil::subtle::AtomicWord>();
-}
-
-TEST(Atomics, AtomicOps32) {
-    TestAtomicIncrement<butil::subtle::Atomic32>();
-}
 
 TEST(Allocators, Malloc) {
   // Try allocating data with a bunch of alignments and sizes

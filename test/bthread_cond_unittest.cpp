@@ -3,8 +3,8 @@
 // Date: Sun Jul 13 15:04:18 CST 2014
 
 #include <map>
+#include <atomic>
 #include <gtest/gtest.h>
-#include "butil/atomicops.h"
 #include "butil/time.h"
 #include "butil/macros.h"
 #include "butil/scoped_lock.h"
@@ -221,8 +221,8 @@ struct PingPongArg {
     bool stopped;
     Signal sig1;
     Signal sig2;
-    butil::atomic<int> nthread;
-    butil::atomic<long> total_count;
+    std::atomic<int> nthread;
+    std::atomic<long> total_count;
 };
 
 void *ping_pong_thread(void* arg) {

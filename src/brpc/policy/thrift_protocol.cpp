@@ -195,7 +195,7 @@ private:
     void DoRun();
 friend void ProcessThriftRequest(InputMessageBase* msg_base);
 
-    butil::atomic<int> _run_counter;
+    std::atomic<int> _run_counter;
     int64_t _received_us;
     ThriftFramedMessage _request;
     ThriftFramedMessage _response;

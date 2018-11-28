@@ -209,7 +209,6 @@ set(BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/src/butil/third_party/murmurhash3/murmurhash3.cpp
     ${PROJECT_SOURCE_DIR}/src/butil/arena.cpp
     ${PROJECT_SOURCE_DIR}/src/butil/at_exit.cc
-    ${PROJECT_SOURCE_DIR}/src/butil/atomicops_internals_x86_gcc.cc
     ${PROJECT_SOURCE_DIR}/src/butil/base64.cc
     ${PROJECT_SOURCE_DIR}/src/butil/big_endian.cc
     ${PROJECT_SOURCE_DIR}/src/butil/cpu.cc

@@ -86,7 +86,6 @@ typedef pthread_mutex_t* MutexHandle;
 #include <deque>
 #include <limits>
 #include <gflags/gflags.h>
-#include "butil/atomicops.h"
 #include "butil/thread_local.h"
 #include "butil/scoped_lock.h"                        // BAIDU_SCOPED_LOCK
 #include "butil/string_splitter.h"
@@ -1108,11 +1107,11 @@ struct VLogSite {
 
     // The consume/release fence makes the iteration outside lock see
     // newly added VLogSite correctly.
-    VLogSite* next() { return (VLogSite*)butil::subtle::Acquire_Load(&_next); }
+    VLogSite* next() { return (VLogSite*)_next.load(std::memory_order_acquire); }
     const VLogSite* next() const
-    { return (VLogSite*)butil::subtle::Acquire_Load(&_next); }
+    { return (VLogSite*)_next.load(std::memory_order_acquire); }
     void set_next(VLogSite* next)
-    { butil::subtle::Release_Store(&_next, (butil::subtle::AtomicWord)next); }
+    { _next.store((intptr_t)next, std::memory_order_release); }
 
     int v() const { return _v; }
     int& v() { return _v; }
@@ -1125,7 +1124,7 @@ struct VLogSite {
     
 private:
     // Next site in the list. NULL means no next.
-    butil::subtle::AtomicWord _next;
+    std::atomic_intptr_t _next;
 
     // --vmodule > --v
     int _v;

@@ -89,9 +89,6 @@ void* bthread_get_assigned_data();
 
 namespace brpc {
 
-BAIDU_CASSERT(sizeof(int32_t) == sizeof(butil::subtle::Atomic32),
-              Atomic32_must_be_int32);
-
 const char* status_str(Server::Status s) {
     switch (s) {
     case Server::UNINITIALIZED: return "UNINITIALIZED";
@@ -102,7 +99,7 @@ const char* status_str(Server::Status s) {
     return "UNKNOWN_STATUS";
 }
 
-butil::static_atomic<int> g_running_server_count = BUTIL_STATIC_ATOMIC_INIT(0);
+std::atomic<int> g_running_server_count { 0 };
 
 DEFINE_bool(reuse_addr, true, "Bind to ports in TIME_WAIT state");
 BRPC_VALIDATE_GFLAG(reuse_addr, PassValidate);
@@ -938,7 +935,7 @@ int Server::StartInternal(const butil::ip_t& ip,
         _status = RUNNING;
         time(&_last_start_time);
         GenerateVersionIfNeeded();
-        g_running_server_count.fetch_add(1, butil::memory_order_relaxed);
+        g_running_server_count.fetch_add(1, std::memory_order_relaxed);
 
         // Pass ownership of `sockfd' to `_am'
         if (_am->StartAccept(sockfd, _options.idle_timeout_sec,
@@ -1116,7 +1113,7 @@ int Server::Join() {
         _derivative_thread = INVALID_BTHREAD;
     }
     
-    g_running_server_count.fetch_sub(1, butil::memory_order_relaxed);
+    g_running_server_count.fetch_sub(1, std::memory_order_relaxed);
     _status = READY;
     return 0;
 }

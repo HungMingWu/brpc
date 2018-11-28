@@ -5,9 +5,9 @@
 #ifndef BUTIL_THREADING_THREAD_COLLISION_WARNER_H_
 #define BUTIL_THREADING_THREAD_COLLISION_WARNER_H_
 
+#include <atomic>
 #include <memory>
 
-#include "butil/atomicops.h"
 #include "butil/base_export.h"
 #include "butil/basictypes.h"
 #include "butil/compiler_specific.h"
@@ -227,11 +227,11 @@ class BUTIL_EXPORT ThreadCollisionWarner {
 
   // This stores the thread id that is inside the critical section, if the
   // value is 0 then no thread is inside.
-  volatile subtle::Atomic32 valid_thread_id_;
+  std::atomic_int32_t  valid_thread_id_;
 
   // Counter to trace how many time a critical section was "pinned"
   // (when allowed) in order to unpin it when counter_ reaches 0.
-  volatile subtle::Atomic32 counter_;
+  std::atomic_int32_t counter_;
 
   // Here only for class unit tests purpose, during the test I need to not
   // DCHECK but notify the collision with something else.

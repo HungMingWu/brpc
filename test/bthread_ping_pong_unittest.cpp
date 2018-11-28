@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <signal.h>
+#include <atomic>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include "butil/compat.h"
@@ -14,7 +15,6 @@
 #include <bthread/sys_futex.h>
 #include <bthread/butex.h>
 #include "bthread/bthread.h"
-#include "butil/atomicops.h"
 
 namespace {
 DEFINE_int32(thread_num, 1, "#pairs of threads doing ping pong");

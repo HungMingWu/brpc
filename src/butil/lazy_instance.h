@@ -36,8 +36,8 @@
 #define BUTIL_LAZY_INSTANCE_H_
 
 #include <new>  // For placement new.
+#include <atomic>
 
-#include "butil/atomicops.h"
 #include "butil/base_export.h"
 #include "butil/basictypes.h"
 #include "butil/debug/leak_annotations.h"
@@ -119,19 +119,19 @@ template <typename Type>
 const bool LeakyLazyInstanceTraits<Type>::kAllowedToAccessOnNonjoinableThread = true;
 #endif
 
-// Our AtomicWord doubles as a spinlock, where a value of
+// Our intptr_t doubles as a spinlock, where a value of
 // kBeingCreatedMarker means the spinlock is being held for creation.
-static const subtle::AtomicWord kLazyInstanceStateCreating = 1;
+static const intptr_t kLazyInstanceStateCreating = 1;
 
 // Check if instance needs to be created. If so return true otherwise
 // if another thread has beat us, wait for instance to be created and
 // return false.
-BUTIL_EXPORT bool NeedsLazyInstance(subtle::AtomicWord* state);
+BUTIL_EXPORT bool NeedsLazyInstance(std::atomic_intptr_t* state);
 
 // After creating an instance, call this to register the dtor to be called
 // at program exit and to update the atomic state to hold the |new_instance|
-BUTIL_EXPORT void CompleteLazyInstance(subtle::AtomicWord* state,
-                                      subtle::AtomicWord new_instance,
+BUTIL_EXPORT void CompleteLazyInstance(std::atomic_intptr_t* state,
+                                      intptr_t new_instance,
                                       void* lazy_instance,
                                       void (*dtor)(void*));
 
@@ -163,7 +163,7 @@ class LazyInstance {
 #endif
     // If any bit in the created mask is true, the instance has already been
     // fully constructed.
-    static const subtle::AtomicWord kLazyInstanceCreatedMask =
+    static const intptr_t kLazyInstanceCreatedMask =
         ~internal::kLazyInstanceStateCreating;
 
     // We will hopefully have fast access when the instance is already created.
@@ -173,11 +173,11 @@ class LazyInstance {
     // private_instance_ > creating needs to acquire visibility over
     // the associated data (private_buf_). Pairing Release_Store is in
     // CompleteLazyInstance().
-    subtle::AtomicWord value = subtle::Acquire_Load(&private_instance_);
+    intptr_t value = private_instance_.load(std::memory_order_acquire);
     if (!(value & kLazyInstanceCreatedMask) &&
         internal::NeedsLazyInstance(&private_instance_)) {
       // Create the instance in the space provided by |private_buf_|.
-      value = reinterpret_cast<subtle::AtomicWord>(
+      value = reinterpret_cast<intptr_t>(
           Traits::New(private_buf_.void_data()));
       internal::CompleteLazyInstance(&private_instance_, value, this,
                                      Traits::kRegisterOnExit ? OnExit : NULL);
@@ -193,7 +193,7 @@ class LazyInstance {
   }
 
   bool operator==(Type* p) {
-    switch (subtle::NoBarrier_Load(&private_instance_)) {
+    switch (private_instance_.load(std::memory_order_relaxed)) {
       case 0:
         return p == NULL;
       case internal::kLazyInstanceStateCreating:
@@ -207,13 +207,13 @@ class LazyInstance {
   // statically initialize it and to maintain a POD class. DO NOT USE FROM
   // OUTSIDE THIS CLASS.
 
-  subtle::AtomicWord private_instance_;
+  std::atomic_intptr_t private_instance_;
   // Preallocated space for the Type instance.
   butil::AlignedMemory<sizeof(Type), ALIGNOF(Type)> private_buf_;
 
  private:
   Type* instance() {
-    return reinterpret_cast<Type*>(subtle::NoBarrier_Load(&private_instance_));
+    return reinterpret_cast<Type*>(private_instance_.load(std::memory_order_relaxed));
   }
 
   // Adapter function for use with AtExit.  This should be called single
@@ -223,7 +223,7 @@ class LazyInstance {
     LazyInstance<Type, Traits>* me =
         reinterpret_cast<LazyInstance<Type, Traits>*>(lazy_instance);
     Traits::Delete(me->instance());
-    subtle::NoBarrier_Store(&me->private_instance_, 0);
+    me->private_instance_.store(0, std::memory_order_relaxed);
   }
 };
 

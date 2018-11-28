@@ -2,8 +2,8 @@
 // Author: Ge,Jun (gejun@baidu.com)
 // Date: Sun Jul 13 15:04:18 CST 2014
 
+#include <atomic>
 #include <gtest/gtest.h>
-#include "butil/atomicops.h"
 #include "butil/time.h"
 #include "butil/macros.h"
 #include "butil/logging.h"
@@ -14,9 +14,9 @@
 #include "bthread/unstable.h"
 
 namespace bthread {
-extern butil::atomic<TaskControl*> g_task_control;
+extern std::atomic<TaskControl*> g_task_control;
 inline TaskControl* get_task_control() {
-    return g_task_control.load(butil::memory_order_consume);
+    return g_task_control.load(std::memory_order_consume);
 }
 } // namespace bthread
 
@@ -102,7 +102,7 @@ TEST(ButexTest, join) {
 struct WaiterArg {
     int expected_result;
     int expected_value;
-    butil::atomic<int> *butex;
+    std::atomic<int> *butex;
     const timespec *ptimeout;
 };
 
@@ -125,12 +125,12 @@ TEST(ButexTest, sanity) {
     const size_t N = 5;
     WaiterArg args[N * 4];
     pthread_t t1, t2;
-    butil::atomic<int>* b1 =
-        bthread::butex_create_checked<butil::atomic<int> >();
+    std::atomic<int>* b1 =
+        bthread::butex_create_checked<std::atomic<int> >();
     ASSERT_TRUE(b1);
     bthread::butex_destroy(b1);
     
-    b1 = bthread::butex_create_checked<butil::atomic<int> >();
+    b1 = bthread::butex_create_checked<std::atomic<int> >();
     *b1 = 1;
     ASSERT_EQ(0, bthread::butex_wake(b1));
 

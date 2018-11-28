@@ -6,8 +6,8 @@
 #define BUTIL_MEMORY_REF_COUNTED_H_
 
 #include <cassert>
+#include <atomic>
 
-#include "butil/atomic_ref_count.h"
 #include "butil/base_export.h"
 #include "butil/compiler_specific.h"
 #ifndef NDEBUG
@@ -67,7 +67,7 @@ class BUTIL_EXPORT RefCountedBase {
   }
 
  private:
-  mutable int ref_count_;
+  mutable std::atomic_int ref_count_;
 #if defined(__clang__)
   mutable bool ALLOW_UNUSED  in_dtor_;
 #else
@@ -92,7 +92,7 @@ class BUTIL_EXPORT RefCountedThreadSafeBase {
   bool Release() const;
 
  private:
-  mutable AtomicRefCount ref_count_;
+  mutable std::atomic_int ref_count_;
 #if defined(__clang__)
   mutable bool ALLOW_UNUSED  in_dtor_;
 #else

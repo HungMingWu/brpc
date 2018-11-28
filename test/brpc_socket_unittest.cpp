@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <fcntl.h>  // F_GETFD
 #include <gtest/gtest.h>
+#include <atomic>
 #include "butil/gperftools_profiler.h"
 #include "butil/time.h"
 #include "butil/macros.h"
@@ -112,7 +113,7 @@ TEST_F(SocketTest, not_recycle_until_zero_nref) {
     ASSERT_EQ(-1, brpc::Socket::Address(id, &ptr));
 }
 
-butil::atomic<int> winner_count(0);
+std::atomic<int> winner_count(0);
 const int AUTH_ERR = -9;
 
 void* auth_fighter(void* arg) {
@@ -153,7 +154,7 @@ TEST_F(SocketTest, authentication) {
     ASSERT_TRUE(brpc::Socket::Address(s->id(), NULL));
 }
 
-static butil::atomic<int> g_called_seq(1);
+static std::atomic<int> g_called_seq(1);
 class MyMessage : public brpc::SocketMessage {
 public:
     MyMessage(const char* str, size_t len, int* called = NULL)
@@ -162,7 +163,7 @@ private:
     butil::Status AppendAndDestroySelf(butil::IOBuf* out_buf, brpc::Socket*) {
         out_buf->append(_str, _len);
         if (_called) {
-            *_called = g_called_seq.fetch_add(1, butil::memory_order_relaxed);
+            *_called = g_called_seq.fetch_add(1, std::memory_order_relaxed);
         }
         delete this;
         return butil::Status::OK();
