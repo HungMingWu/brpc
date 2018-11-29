@@ -154,7 +154,7 @@ void bthread_id_list_swap(bthread_id_list_t* dest,
 int bthread_id_list_reset(bthread_id_list_t* list, int error_code);
 // Following 2 functions wrap above process.
 int bthread_id_list_reset_pthreadsafe(
-    bthread_id_list_t* list, int error_code, pthread_mutex_t* mutex);
+    bthread_id_list_t* list, int error_code, std::mutex* mutex);
 int bthread_id_list_reset_bthreadsafe(
     bthread_id_list_t* list, int error_code, bthread_mutex_t* mutex);
 
@@ -181,7 +181,7 @@ int bthread_id_list_reset2(bthread_id_list_t* list, int error_code,
                            const std::string& error_text);
 int bthread_id_list_reset2_pthreadsafe(bthread_id_list_t* list, int error_code,
                                        const std::string& error_text,
-                                       pthread_mutex_t* mutex);
+                                       std::mutex* mutex);
 int bthread_id_list_reset2_bthreadsafe(bthread_id_list_t* list, int error_code,
                                        const std::string& error_text,
                                        bthread_mutex_t* mutex);

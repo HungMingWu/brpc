@@ -23,6 +23,7 @@
 #include <iostream>                            // std::ostream
 #include <deque>                               // std::deque
 #include <set>                                 // std::set
+#include <mutex>
 #include "bthread/types.h"                      // bthread_id_t
 #include "butil/iobuf.h"                        // butil::IOBuf, IOPortal
 #include "butil/macros.h"                       // DISALLOW_COPY_AND_ASSIGN
@@ -774,7 +775,7 @@ private:
     std::deque<PipelinedInfo>* _pipeline_q;
 
     // For storing call-id of in-progress RPC.
-    pthread_mutex_t _id_wait_list_mutex;
+    std::mutex _id_wait_list_mutex;
     bthread_id_list_t _id_wait_list;
 
     // Set with cpuwide_time_us() at last write operation

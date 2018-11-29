@@ -23,7 +23,6 @@
 #include <io.h>
 #include <windows.h>
 typedef HANDLE FileHandle;
-typedef HANDLE MutexHandle;
 // Windows warns on using write().  It prefers _write().
 #define write(fd, buf, count) _write(fd, buf, static_cast<unsigned int>(count))
 // Windows doesn't define STDERR_FILENO.  Define it here.
@@ -49,7 +48,6 @@ typedef HANDLE MutexHandle;
 #include <unistd.h>
 #define MAX_PATH PATH_MAX
 typedef FILE* FileHandle;
-typedef pthread_mutex_t* MutexHandle;
 #endif
 
 #include <algorithm>
@@ -242,32 +240,7 @@ public:
         if (initialized)
             return;
         lock_log_file = lock_log;
-        if (lock_log_file == LOCK_LOG_FILE) {
-#if defined(OS_WIN)
-            if (!log_mutex) {
-                std::wstring safe_name;
-                if (new_log_file)
-                    safe_name = new_log_file;
-                else
-                    safe_name = GetDefaultLogFile();
-                // \ is not a legal character in mutex names so we replace \ with /
-                std::replace(safe_name.begin(), safe_name.end(), '\\', '/');
-                std::wstring t(L"Global\\");
-                t.append(safe_name);
-                log_mutex = ::CreateMutex(NULL, FALSE, t.c_str());
-
-                if (log_mutex == NULL) {
-#if DEBUG
-                    // Keep the error code for debugging
-                    int error = GetLastError();  // NOLINT
-                    butil::debug::BreakDebugger();
-#endif
-                    // Return nicely without putting initialized to true.
-                    return;
-                }
-            }
-#endif
-        } else {
+        if (lock_log_file != LOCK_LOG_FILE) {
             log_lock = new butil::Mutex;
         }
         initialized = true;
@@ -276,16 +249,7 @@ public:
 private:
     static void LockLogging() {
         if (lock_log_file == LOCK_LOG_FILE) {
-#if defined(OS_WIN)
-            ::WaitForSingleObject(log_mutex, INFINITE);
-            // WaitForSingleObject could have returned WAIT_ABANDONED. We don't
-            // abort the process here. UI tests might be crashy sometimes,
-            // and aborting the test binary only makes the problem worse.
-            // We also don't use LOG macros because that might lead to an infinite
-            // loop. For more info see http://crbug.com/18028.
-#elif defined(OS_POSIX)
-            pthread_mutex_lock(&log_mutex);
-#endif
+            log_mutex.lock();
         } else {
             // use the lock
             log_lock->lock();
@@ -294,11 +258,7 @@ private:
 
     static void UnlockLogging() {
         if (lock_log_file == LOCK_LOG_FILE) {
-#if defined(OS_WIN)
-            ReleaseMutex(log_mutex);
-#elif defined(OS_POSIX)
-            pthread_mutex_unlock(&log_mutex);
-#endif
+            log_mutex.unlock();
         } else {
             log_lock->unlock();
         }
@@ -310,11 +270,7 @@ private:
 
     // When we don't use a lock, we are using a global mutex. We need to do this
     // because LockFileEx is not thread safe.
-#if defined(OS_WIN)
-    static MutexHandle log_mutex;
-#elif defined(OS_POSIX)
-    static pthread_mutex_t log_mutex;
-#endif
+    static std::mutex log_mutex;
 
     static bool initialized;
     static LogLockingState lock_log_file;
@@ -327,12 +283,7 @@ butil::Mutex* LoggingLock::log_lock = NULL;
 // static
 LogLockingState LoggingLock::lock_log_file = LOCK_LOG_FILE;
 
-#if defined(OS_WIN)
-// static
-MutexHandle LoggingLock::log_mutex = NULL;
-#elif defined(OS_POSIX)
-pthread_mutex_t LoggingLock::log_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+std::mutex LoggingLock::log_mutex;
 
 // Called by logging functions to ensure that debug_file is initialized
 // and can be used for writing. Returns false if the file could not be

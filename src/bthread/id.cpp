@@ -672,7 +672,7 @@ void bthread_id_list_swap(bthread_id_list_t* list1,
 }
 
 int bthread_id_list_reset_pthreadsafe(bthread_id_list_t* list, int error_code,
-                                       pthread_mutex_t* mutex) {
+                                       std::mutex* mutex) {
     return bthread_id_list_reset2_pthreadsafe(
         list, error_code, std::string(), mutex);
 }
@@ -750,7 +750,7 @@ int bthread_id_list_reset2(bthread_id_list_t* list,
 int bthread_id_list_reset2_pthreadsafe(bthread_id_list_t* list,
                                        int error_code,
                                        const std::string& error_text,
-                                       pthread_mutex_t* mutex) {
+                                       std::mutex* mutex) {
     if (mutex == NULL) {
         return EINVAL;
     }
@@ -763,9 +763,9 @@ int bthread_id_list_reset2_pthreadsafe(bthread_id_list_t* list,
         return rc;
     }
     // Swap out the list then reset. The critical section is very small.
-    pthread_mutex_lock(mutex);
+    std::unique_lock lock(*mutex);
     std::swap(list->impl, tmplist.impl);
-    pthread_mutex_unlock(mutex);
+    lock.unlock();
     const int rc2 = bthread_id_list_reset2(&tmplist, error_code, error_text);
     bthread_id_list_destroy(&tmplist);
     return rc2;

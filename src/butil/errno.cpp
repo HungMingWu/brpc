@@ -20,8 +20,8 @@
 #include <string.h>                                    // strerror_r
 #include <stdlib.h>                                    // EXIT_FAILURE
 #include <stdio.h>                                     // snprintf
-#include <pthread.h>                                   // pthread_mutex_t
 #include <unistd.h>                                    // _exit
+#include <mutex>
 #include "butil/scoped_lock.h"                         // BAIDU_SCOPED_LOCK
 
 namespace butil {
@@ -29,14 +29,14 @@ namespace butil {
 const int ERRNO_BEGIN = -32768;
 const int ERRNO_END = 32768;
 static const char* errno_desc[ERRNO_END - ERRNO_BEGIN] = {};
-static pthread_mutex_t modify_desc_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex modify_desc_mutex;
 
 const size_t ERROR_BUFSIZE = 64;
 __thread char tls_error_buf[ERROR_BUFSIZE];
 
 int DescribeCustomizedErrno(
     int error_code, const char* error_name, const char* description) {
-    BAIDU_SCOPED_LOCK(modify_desc_mutex);
+    std::lock_guard lock(modify_desc_mutex);
     if (error_code < ERRNO_BEGIN || error_code >= ERRNO_END) {
         // error() is a non-portable GNU extension that should not be used.
         fprintf(stderr, "Fail to define %s(%d) which is out of range, abort.",

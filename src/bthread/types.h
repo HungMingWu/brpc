@@ -20,6 +20,7 @@
 #define BTHREAD_TYPES_H
 
 #include <stdint.h>                            // uint64_t
+#include <mutex>
 #if defined(__cplusplus)
 #include "butil/logging.h"                      // CHECK
 #endif
@@ -74,7 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, bthread_key_t key) {
 #endif  // __cplusplus
 
 typedef struct {
-    pthread_mutex_t mutex;
+    std::mutex mutex;
     void* free_keytables;
     int destroyed;
 } bthread_keytable_pool_t;

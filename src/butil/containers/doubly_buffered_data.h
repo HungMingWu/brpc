@@ -19,6 +19,7 @@
 #define BUTIL_DOUBLY_BUFFERED_DATA_H
 
 #include <vector>                                       // std::vector
+#include <mutex>
 #include <pthread.h>
 #include <memory>
 #include <atomic>
@@ -178,10 +179,10 @@ private:
     std::vector<Wrapper*> _wrappers;
 
     // Sequence access to _wrappers.
-    pthread_mutex_t _wrappers_mutex;
+    std::mutex _wrappers_mutex;
 
     // Sequence modifications.
-    pthread_mutex_t _modify_mutex;
+    std::mutex _modify_mutex;
 };
 
 static const pthread_key_t INVALID_PTHREAD_KEY = (pthread_key_t)-1;
@@ -244,7 +245,7 @@ DoublyBufferedData<T, TLS>::AddWrapper() {
         return NULL;
     }
     try {
-        BAIDU_SCOPED_LOCK(_wrappers_mutex);
+        std::lock_guard lock(_wrappers_mutex);
         _wrappers.push_back(w.get());
     } catch (std::exception& e) {
         return NULL;
@@ -259,7 +260,7 @@ void DoublyBufferedData<T, TLS>::RemoveWrapper(
     if (NULL == w) {
         return;
     }
-    BAIDU_SCOPED_LOCK(_wrappers_mutex);
+    std::lock_guard lock(_wrappers_mutex);
     for (size_t i = 0; i < _wrappers.size(); ++i) {
         if (_wrappers[i] == w) {
             _wrappers[i] = _wrappers.back();
@@ -275,8 +276,6 @@ DoublyBufferedData<T, TLS>::DoublyBufferedData()
     , _created_key(false)
     , _wrapper_key(0) {
     _wrappers.reserve(64);
-    pthread_mutex_init(&_modify_mutex, NULL);
-    pthread_mutex_init(&_wrappers_mutex, NULL);
     const int rc = pthread_key_create(&_wrapper_key,
                                       butil::delete_object<Wrapper>);
     if (rc != 0) {
@@ -302,15 +301,13 @@ DoublyBufferedData<T, TLS>::~DoublyBufferedData() {
     }
     
     {
-        BAIDU_SCOPED_LOCK(_wrappers_mutex);
+        std::lock_guard lock(_wrappers_mutex);
         for (size_t i = 0; i < _wrappers.size(); ++i) {
             _wrappers[i]->_control = NULL;  // hack: disable removal.
             delete _wrappers[i];
         }
         _wrappers.clear();
     }
-    pthread_mutex_destroy(&_modify_mutex);
-    pthread_mutex_destroy(&_wrappers_mutex);
 }
 
 template <typename T, typename TLS>
@@ -346,7 +343,7 @@ size_t DoublyBufferedData<T, TLS>::Modify(Fn& fn) {
     // than _wrappers_mutex is to avoid blocking threads calling
     // AddWrapper() or RemoveWrapper() too long. Most of the time, modifications
     // are done by one thread, contention should be negligible.
-    BAIDU_SCOPED_LOCK(_modify_mutex);
+    std::lock_guard lock(_modify_mutex);
     int bg_index = !_index.load(std::memory_order_relaxed);
     // background instance is not accessed by other threads, being safe to
     // modify.
@@ -365,7 +362,7 @@ size_t DoublyBufferedData<T, TLS>::Modify(Fn& fn) {
     // Wait until all threads finishes current reading. When they begin next
     // read, they should see updated _index.
     {
-        BAIDU_SCOPED_LOCK(_wrappers_mutex);
+        std::lock_guard lock(_wrappers_mutex);
         for (size_t i = 0; i < _wrappers.size(); ++i) {
             _wrappers[i]->WaitReadDone();
         }

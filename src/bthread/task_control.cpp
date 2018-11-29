@@ -16,6 +16,7 @@
 // Author: Ge,Jun (gejun@baidu.com)
 // Date: Tue Jul 10 17:40:58 CST 2012
 
+#include <mutex>
 #include "butil/scoped_lock.h"             // BAIDU_SCOPED_LOCK
 #include "butil/errno.h"                   // berror
 #include "butil/logging.h"
@@ -41,7 +42,7 @@ namespace bthread {
 DECLARE_int32(bthread_concurrency);
 DECLARE_int32(bthread_min_concurrency);
 
-extern pthread_mutex_t g_task_control_mutex;
+extern std::mutex g_task_control_mutex;
 extern BAIDU_THREAD_LOCAL TaskGroup* tls_task_group;
 void (*g_worker_startfn)() = NULL;
 
@@ -383,7 +384,7 @@ void TaskControl::signal_task(int num_task) {
         FLAGS_bthread_min_concurrency > 0 &&    // test min_concurrency for performance
         _concurrency.load(std::memory_order_relaxed) < FLAGS_bthread_concurrency) {
         // TODO: Reduce this lock
-        BAIDU_SCOPED_LOCK(g_task_control_mutex);
+        std::lock_guard lock(g_task_control_mutex);
         if (_concurrency.load(std::memory_order_acquire) < FLAGS_bthread_concurrency) {
             add_workers(1);
         }

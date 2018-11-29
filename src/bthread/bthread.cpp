@@ -16,6 +16,7 @@
 // Author: Ge,Jun (gejun@baidu.com)
 // Date: Tue Jul 10 17:40:58 CST 2012
 
+#include <mutex>
 #include <gflags/gflags.h>
 #include "butil/macros.h"                       // BAIDU_CASSERT
 #include "butil/logging.h"
@@ -54,7 +55,7 @@ const int ALLOW_UNUSED register_FLAGS_bthread_min_concurrency =
 
 BAIDU_CASSERT(sizeof(TaskControl*) == sizeof(std::atomic<TaskControl*>), atomic_size_match);
 
-pthread_mutex_t g_task_control_mutex = PTHREAD_MUTEX_INITIALIZER;
+std::mutex g_task_control_mutex;
 // Referenced in rpc, needs to be extern.
 // Notice that we can't declare the variable as atomic<TaskControl*> which
 // are not constructed before main().
@@ -73,7 +74,7 @@ inline TaskControl* get_or_new_task_control() {
     if (c != NULL) {
         return c;
     }
-    BAIDU_SCOPED_LOCK(g_task_control_mutex);
+    std::lock_guard lock(g_task_control_mutex);
     c = p->load(std::memory_order_consume);
     if (c != NULL) {
         return c;
@@ -105,7 +106,7 @@ static bool validate_bthread_min_concurrency(const char*, int32_t val) {
     if (!c) {
         return true;
     }
-    BAIDU_SCOPED_LOCK(g_task_control_mutex);
+    std::lock_guard lock(g_task_control_mutex);
     int concurrency = c->concurrency();
     if (val > concurrency) {
         int added = c->add_workers(val - concurrency);
@@ -284,7 +285,7 @@ int bthread_setconcurrency(int num) {
             return 0;
         }
     }
-    BAIDU_SCOPED_LOCK(bthread::g_task_control_mutex);
+    std::lock_guard lock(bthread::g_task_control_mutex);
     c = bthread::get_task_control();
     if (c == NULL) {
         if (bthread::never_set_bthread_concurrency) {

@@ -20,6 +20,7 @@
 #include <execinfo.h>
 #include <memory>
 #include <atomic>
+#include <mutex>
 #include <dlfcn.h>                               // dlsym
 #include <fcntl.h>                               // O_RDONLY
 #include "bvar/bvar.h"
@@ -255,7 +256,7 @@ static ContentionProfiler* BAIDU_CACHELINE_ALIGNMENT g_cp = NULL;
 // previous contention profilers should be detected and overwritten.
 static uint64_t g_cp_version = 0;
 // Protecting accesss to g_cp.
-static pthread_mutex_t g_cp_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex g_cp_mutex;
 
 // The map storing information for profiling pthread_mutex. Different from
 // bthread_mutex, we can't save stuff into pthread_mutex, we neither can
@@ -334,7 +335,7 @@ bool ContentionProfilerStart(const char* filename) {
 void ContentionProfilerStop() {
     ContentionProfiler* ctx = NULL;
     if (g_cp) {
-        std::unique_lock<pthread_mutex_t> mu(g_cp_mutex);
+        std::unique_lock mu(g_cp_mutex);
         if (g_cp) {
             ctx = g_cp;
             g_cp = NULL;

@@ -60,7 +60,7 @@ struct KeyInfo {
 static KeyInfo s_key_info[KEYS_MAX] = {};
 
 // For allocating keys.
-static pthread_mutex_t s_key_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex s_key_mutex;
 static size_t nfreekey = 0;
 static size_t nkey = 0;
 static uint32_t s_free_keys[KEYS_MAX];
@@ -223,7 +223,7 @@ void return_keytable(bthread_keytable_pool_t* pool, KeyTable* kt) {
         delete kt;
         return;
     }
-    std::unique_lock<pthread_mutex_t> mu(pool->mutex);
+    std::unique_lock mu(pool->mutex);
     if (pool->destroyed) {
         mu.unlock();
         delete kt;
@@ -248,7 +248,7 @@ static void arg_as_dtor(void* data, const void* arg) {
 }
 
 static int get_key_count(void*) {
-    BAIDU_SCOPED_LOCK(bthread::s_key_mutex);
+    std::lock_guard lock(bthread::s_key_mutex);
     return (int)nkey - (int)nfreekey;
 }
 static size_t get_keytable_count(void*) {
@@ -276,7 +276,6 @@ int bthread_keytable_pool_init(bthread_keytable_pool_t* pool) {
         LOG(ERROR) << "Param[pool] is NULL";
         return EINVAL;
     }
-    pthread_mutex_init(&pool->mutex, NULL);
     pool->free_keytables = NULL;
     pool->destroyed = 0;
     return 0;
@@ -327,7 +326,7 @@ int bthread_keytable_pool_getstat(bthread_keytable_pool_t* pool,
         LOG(ERROR) << "Param[pool] or Param[stat] is NULL";
         return EINVAL;
     }
-    std::unique_lock<pthread_mutex_t> mu(pool->mutex);
+    std::unique_lock mu(pool->mutex);
     size_t count = 0;
     bthread::KeyTable* p = (bthread::KeyTable*)pool->free_keytables;
     for (; p; p = p->next, ++count) {}
@@ -362,7 +361,7 @@ void bthread_keytable_pool_reserve(bthread_keytable_pool_t* pool,
             kt->set_data(key, data);
         }  // else append kt w/o data.
 
-        std::unique_lock<pthread_mutex_t> mu(pool->mutex);
+        std::unique_lock mu(pool->mutex);
         if (pool->destroyed) {
             mu.unlock();
             delete kt;

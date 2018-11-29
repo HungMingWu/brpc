@@ -470,12 +470,10 @@ Socket::Socket(Forbidden)
     , _stream_set(NULL)
 {
     CreateVarsOnce();
-    pthread_mutex_init(&_id_wait_list_mutex, NULL);
     _epollout_butex = bthread::butex_create_checked<std::atomic<int> >();
 }
 
 Socket::~Socket() {
-    pthread_mutex_destroy(&_id_wait_list_mutex);
     bthread::butex_destroy(_epollout_butex);
 }
 
@@ -515,10 +513,10 @@ Socket::WriteRequest* Socket::ReleaseWriteRequestsExceptLast(
 
 void Socket::ReleaseAllFailedWriteRequests(Socket::WriteRequest* req) {
     CHECK(Failed());
-    pthread_mutex_lock(&_id_wait_list_mutex);
+    std::unique_lock lock(_id_wait_list_mutex);
     const int error_code = non_zero_error_code();
     const std::string error_text = _error_text;
-    pthread_mutex_unlock(&_id_wait_list_mutex);
+    lock.unlock();
     // Notice that `req' is not tail if Address after IsWriteComplete fails.
     do {
         req = ReleaseWriteRequestsExceptLast(req, error_code, error_text);
@@ -854,10 +852,10 @@ int Socket::SetFailed(int error_code, const char* error_fmt, ...) {
                 butil::string_vprintf(&error_text, error_fmt, ap);
                 va_end(ap);
             }
-            pthread_mutex_lock(&_id_wait_list_mutex);
+            std::unique_lock lock(_id_wait_list_mutex);
             _error_code = error_code;
             _error_text = error_text;
-            pthread_mutex_unlock(&_id_wait_list_mutex);
+            lock.unlock();
             
             // Do health-checking even if we're not connected before, needed
             // by Channel to revive never-connected socket when server side
@@ -937,17 +935,17 @@ int Socket::SetFailed(SocketId id) {
 }
 
 void Socket::NotifyOnFailed(bthread_id_t id) {
-    pthread_mutex_lock(&_id_wait_list_mutex);
+    std::unique_lock lock(_id_wait_list_mutex);
     if (!Failed()) {
         const int rc = bthread_id_list_add(&_id_wait_list, id);
-        pthread_mutex_unlock(&_id_wait_list_mutex);
+        lock.unlock();
         if (rc != 0) {
             bthread_id_error(id, rc);
         }
     } else {
         const int rc = non_zero_error_code();
         const std::string desc = _error_text;
-        pthread_mutex_unlock(&_id_wait_list_mutex);
+        lock.unlock();
         bthread_id_error2(id, rc, desc);
     }
 }
@@ -1490,21 +1488,20 @@ inline int SetError(bthread_id_t id_wait, int ec) {
 }
 
 int Socket::ConductError(bthread_id_t id_wait) {
-    pthread_mutex_lock(&_id_wait_list_mutex);
+    std::unique_lock lock(_id_wait_list_mutex);
     if (Failed()) {
         const int error_code = non_zero_error_code();
         if (id_wait != INVALID_BTHREAD_ID) {
             const std::string error_text = _error_text;
-            pthread_mutex_unlock(&_id_wait_list_mutex);
+            lock.unlock();
             bthread_id_error2(id_wait, error_code, error_text);
             return 0;
         } else {
-            pthread_mutex_unlock(&_id_wait_list_mutex);
+            lock.unlock();
             errno = error_code;
             return -1;
         }
     } else {
-        pthread_mutex_unlock(&_id_wait_list_mutex);
         return 1;
     }
 }
@@ -2111,7 +2108,7 @@ void Socket::DebugSocket(std::ostream& os, SocketId id) {
         }
     }
     {
-        BAIDU_SCOPED_LOCK(ptr->_id_wait_list_mutex);
+        std::lock_guard lock(ptr->_id_wait_list_mutex);
         if (bthread::get_sizes) {
             nidsize = bthread::get_sizes(
                 &ptr->_id_wait_list, idsizes, arraysize(idsizes));
