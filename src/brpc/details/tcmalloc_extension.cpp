@@ -1,12 +1,12 @@
-#include <pthread.h>
 #include <dlfcn.h>                               // dlsym
 #include <stdlib.h>                              // getenv
+#include <mutex>
 #include "butil/compiler_specific.h"
 #include "brpc/details/tcmalloc_extension.h"
 
 namespace {
 typedef MallocExtension* (*GetInstanceFn)();
-static pthread_once_t g_get_instance_fn_once = PTHREAD_ONCE_INIT;
+static std::once_flag g_get_instance_fn_once;
 static GetInstanceFn g_get_instance_fn = NULL;
 static void InitGetInstanceFn() {
     g_get_instance_fn = (GetInstanceFn)dlsym(
@@ -22,7 +22,7 @@ MallocExtension* BAIDU_WEAK MallocExtension::instance() {
     // to fully replace the weak-function mechanism since our code are generally
     // not compiled with -rdynamic which writes symbols to the table that
     // dlsym reads.
-    pthread_once(&g_get_instance_fn_once, InitGetInstanceFn);
+    std::call_once(g_get_instance_fn_once, InitGetInstanceFn);
     if (g_get_instance_fn) {
         return g_get_instance_fn();
     }

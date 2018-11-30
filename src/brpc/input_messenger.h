@@ -117,7 +117,7 @@ private:
     bool _non_protocol;
     size_t _capacity;
 
-    butil::Mutex _add_handler_mutex;
+    std::mutex _add_handler_mutex;
 };
 
 // Get the global InputMessenger at client-side.

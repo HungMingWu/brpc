@@ -24,7 +24,7 @@ ThreadIdNameManager::ThreadIdNameManager()
       main_process_id_(kInvalidThreadId) {
   g_default_name = new std::string(kDefaultName);
 
-  AutoLock locked(lock_);
+  std::lock_guard locked(lock_);
   name_to_interned_name_[kDefaultName] = g_default_name;
 }
 
@@ -42,7 +42,7 @@ const char* ThreadIdNameManager::GetDefaultInternedString() {
 
 void ThreadIdNameManager::RegisterThread(PlatformThreadHandle::Handle handle,
                                          PlatformThreadId id) {
-  AutoLock locked(lock_);
+  std::lock_guard locked(lock_);
   thread_id_to_handle_[id] = handle;
   thread_handle_to_interned_name_[handle] =
       name_to_interned_name_[kDefaultName];
@@ -51,7 +51,7 @@ void ThreadIdNameManager::RegisterThread(PlatformThreadHandle::Handle handle,
 void ThreadIdNameManager::SetName(PlatformThreadId id, const char* name) {
   std::string str_name(name);
 
-  AutoLock locked(lock_);
+  std::lock_guard locked(lock_);
   NameToInternedNameMap::iterator iter = name_to_interned_name_.find(str_name);
   std::string* leaked_str = NULL;
   if (iter != name_to_interned_name_.end()) {
@@ -75,7 +75,7 @@ void ThreadIdNameManager::SetName(PlatformThreadId id, const char* name) {
 }
 
 const char* ThreadIdNameManager::GetName(PlatformThreadId id) {
-  AutoLock locked(lock_);
+  std::lock_guard locked(lock_);
 
   if (id == main_process_id_)
     return main_process_name_->c_str();
@@ -92,7 +92,7 @@ const char* ThreadIdNameManager::GetName(PlatformThreadId id) {
 
 void ThreadIdNameManager::RemoveName(PlatformThreadHandle::Handle handle,
                                      PlatformThreadId id) {
-  AutoLock locked(lock_);
+  std::lock_guard locked(lock_);
   ThreadHandleToInternedNameMap::iterator handle_to_name_iter =
       thread_handle_to_interned_name_.find(handle);
 

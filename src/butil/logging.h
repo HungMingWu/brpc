@@ -27,6 +27,7 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <mutex>
 #include "butil/macros.h"    // BAIDU_CONCAT
 #include "butil/time.h"      // gettimeofday_us()
 
@@ -79,7 +80,6 @@
 #include "butil/debug/debugger.h"
 #include "butil/strings/string_piece.h"
 #include "butil/build_config.h"
-#include "butil/synchronization/lock.h"
 //
 // Optional message capabilities
 // -----------------------------
@@ -323,7 +323,7 @@ public:
     bool OnLogMessage(int severity, const char* file, int line,
                  const butil::StringPiece& log_content);
 private:
-    butil::Lock _lock;
+    std::mutex _lock;
 };
 
 typedef int LogSeverity;

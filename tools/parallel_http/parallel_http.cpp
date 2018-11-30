@@ -19,6 +19,7 @@
 #include <gflags/gflags.h>
 #include <deque>
 #include <atomic>
+#include <mutex>
 #include <bthread/bthread.h>
 #include <butil/logging.h>
 #include <butil/files/scoped_file.h>
@@ -37,7 +38,7 @@ struct AccessThreadArgs {
     const std::deque<std::string>* url_list;
     size_t offset;
     std::deque<std::pair<std::string, butil::IOBuf> > output_queue;
-    butil::Mutex output_queue_mutex;
+    std::mutex output_queue_mutex;
     std::atomic<int> current_concurrency;
 };
 
@@ -53,7 +54,7 @@ public:
 void OnHttpCallEnd::Run() {
     std::unique_ptr<OnHttpCallEnd> delete_self(this);
     {
-        BAIDU_SCOPED_LOCK(args->output_queue_mutex);
+        std::lock_guard guard(args->output_queue_mutex);
         if (cntl.Failed()) {
             args->output_queue.push_back(std::make_pair(url, butil::IOBuf()));
         } else {
@@ -78,7 +79,7 @@ void* access_thread(void* void_args) {
         brpc::Channel channel;
         if (channel.Init(url.c_str(), &options) != 0) {
             LOG(ERROR) << "Fail to create channel to url=" << url;
-            BAIDU_SCOPED_LOCK(args->output_queue_mutex);
+            std::lock_guard guard(args->output_queue_mutex);
             args->output_queue.push_back(std::make_pair(url, butil::IOBuf()));
             continue;
         }
@@ -150,7 +151,7 @@ int main(int argc, char** argv) {
     while (nprinted != url_list.size()) {
         for (int i = 0; i < FLAGS_thread_num; ++i) {
             {
-                BAIDU_SCOPED_LOCK(args[i].output_queue_mutex);
+                std::lock_guard guard(args[i].output_queue_mutex);
                 output_queue.swap(args[i].output_queue);
             }
             for (size_t i = 0; i < output_queue.size(); ++i) {

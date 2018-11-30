@@ -4,7 +4,6 @@
 
 #include "butil/compiler_specific.h"
 #include "butil/memory/scoped_ptr.h"
-#include "butil/synchronization/lock.h"
 #include "butil/threading/platform_thread.h"
 #include "butil/threading/simple_thread.h"
 #include "butil/threading/thread_collision_warner.h"
@@ -266,30 +265,30 @@ TEST(ThreadCollisionTest, MTSynchedScopedBookCriticalSectionTest) {
   // a lock.
   class QueueUser : public butil::DelegateSimpleThread::Delegate {
    public:
-    QueueUser(NonThreadSafeQueue& queue, butil::Lock& lock)
+    QueueUser(NonThreadSafeQueue& queue, std::mutex& lock)
         : queue_(queue),
           lock_(lock) {}
 
     virtual void Run() OVERRIDE {
       {
-        butil::AutoLock auto_lock(lock_);
+        std::lock_guard auto_lock(lock_);
         queue_.push(0);
       }
       {
-        butil::AutoLock auto_lock(lock_);
+        std::lock_guard auto_lock(lock_);
         queue_.pop();
       }
     }
    private:
     NonThreadSafeQueue& queue_;
-    butil::Lock& lock_;
+    std::mutex& lock_;
   };
 
   AssertReporter* local_reporter = new AssertReporter();
 
   NonThreadSafeQueue queue(local_reporter);
 
-  butil::Lock lock;
+  std::mutex lock;
 
   QueueUser queue_user_a(queue, lock);
   QueueUser queue_user_b(queue, lock);
@@ -340,34 +339,34 @@ TEST(ThreadCollisionTest, MTSynchedScopedRecursiveBookCriticalSectionTest) {
   // a lock.
   class QueueUser : public butil::DelegateSimpleThread::Delegate {
    public:
-    QueueUser(NonThreadSafeQueue& queue, butil::Lock& lock)
+    QueueUser(NonThreadSafeQueue& queue, std::mutex& lock)
         : queue_(queue),
           lock_(lock) {}
 
     virtual void Run() OVERRIDE {
       {
-        butil::AutoLock auto_lock(lock_);
+        std::lock_guard auto_lock(lock_);
         queue_.push(0);
       }
       {
-        butil::AutoLock auto_lock(lock_);
+        std::lock_guard auto_lock(lock_);
         queue_.bar();
       }
       {
-        butil::AutoLock auto_lock(lock_);
+        std::lock_guard auto_lock(lock_);
         queue_.pop();
       }
     }
    private:
     NonThreadSafeQueue& queue_;
-    butil::Lock& lock_;
+    std::mutex& lock_;
   };
 
   AssertReporter* local_reporter = new AssertReporter();
 
   NonThreadSafeQueue queue(local_reporter);
 
-  butil::Lock lock;
+  std::mutex lock;
 
   QueueUser queue_user_a(queue, lock);
   QueueUser queue_user_b(queue, lock);

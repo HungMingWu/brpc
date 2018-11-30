@@ -1679,7 +1679,7 @@ void Server::PrintTabsBody(std::ostream& os,
         "<div style='height:40px;'></div>";  // placeholder
 }
 
-static pthread_mutex_t g_dummy_server_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex g_dummy_server_mutex;
 static Server* g_dummy_server = NULL;
 
 int StartDummyServerAt(int port, ProfilerLinker) {
@@ -1688,7 +1688,7 @@ int StartDummyServerAt(int port, ProfilerLinker) {
         return -1;
     }
     if (g_dummy_server == NULL) {  // (1)
-        BAIDU_SCOPED_LOCK(g_dummy_server_mutex);
+        std::lock_guard guard(g_dummy_server_mutex);
         if (g_dummy_server == NULL) {
             Server* dummy_server = new Server;
             dummy_server->set_version(butil::string_printf(

@@ -121,7 +121,7 @@ void DelegateSimpleThreadPool::JoinAll() {
 }
 
 void DelegateSimpleThreadPool::AddWork(Delegate* delegate, int repeat_count) {
-  AutoLock locked(lock_);
+  std::lock_guard locked(lock_);
   for (int i = 0; i < repeat_count; ++i)
     delegates_.push(delegate);
   // If we were empty, signal that we have work now.
@@ -135,7 +135,7 @@ void DelegateSimpleThreadPool::Run() {
   while (true) {
     dry_.Wait();
     {
-      AutoLock locked(lock_);
+      std::lock_guard locked(lock_);
       if (!dry_.IsSignaled())
         continue;
 

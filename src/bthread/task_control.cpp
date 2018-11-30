@@ -19,6 +19,7 @@
 #include <mutex>
 #include "butil/scoped_lock.h"             // BAIDU_SCOPED_LOCK
 #include "butil/errno.h"                   // berror
+#include "butil/compat.h"
 #include "butil/logging.h"
 #include "butil/third_party/murmurhash3/murmurhash3.h"
 #include "bthread/sys_futex.h"            // futex_wake_private
@@ -262,7 +263,7 @@ int TaskControl::_add_group(TaskGroup* g) {
     if (__builtin_expect(NULL == g, 0)) {
         return -1;
     }
-    std::unique_lock<butil::Mutex> mu(_modify_group_mutex);
+    std::unique_lock mu(_modify_group_mutex);
     if (_stop) {
         return -1;
     }

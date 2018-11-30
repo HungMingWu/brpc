@@ -20,7 +20,7 @@
 
 #include <pthread.h>                        // pthread_mutex_*
 #include <stdlib.h>                         // abort
-
+#include <mutex>
 #include <new>                              // std::nothrow
 #include <deque>                            // std::deque
 #include <vector>                           // std::vector
@@ -177,14 +177,14 @@ private:
         return *_s_free_ids;
     }
 
-    static pthread_mutex_t                      _s_mutex;
+    static std::mutex                           _s_mutex;
     static AgentId                              _s_agent_kinds;
     static std::deque<AgentId>                  *_s_free_ids;
     static __thread std::vector<ThreadBlock *>  *_s_tls_blocks;
 };
 
 template <typename Agent>
-pthread_mutex_t AgentGroup<Agent>::_s_mutex = PTHREAD_MUTEX_INITIALIZER;
+std::mutex AgentGroup<Agent>::_s_mutex;
 
 template <typename Agent>
 std::deque<AgentId>* AgentGroup<Agent>::_s_free_ids = NULL;

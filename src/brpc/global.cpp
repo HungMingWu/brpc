@@ -135,7 +135,7 @@ struct GlobalExtensions {
     ConstantConcurrencyLimiter constant_cl;
 };
 
-static pthread_once_t register_extensions_once = PTHREAD_ONCE_INIT;
+static std::once_flag register_extensions_once;
 static GlobalExtensions* g_ext = NULL;
 
 static long ReadPortOfDummyServer(const char* filename) {
@@ -596,11 +596,7 @@ static void GlobalInitializeOrDieImpl() {
 }
 
 void GlobalInitializeOrDie() {
-    if (pthread_once(&register_extensions_once,
-                     GlobalInitializeOrDieImpl) != 0) {
-        LOG(FATAL) << "Fail to pthread_once";
-        exit(1);
-    }
+    std::call_once(register_extensions_once, GlobalInitializeOrDieImpl);
 }
 
 } // namespace brpc

@@ -5,6 +5,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/epoll.h>
 #include <fcntl.h>  // F_GETFD
 #include <gtest/gtest.h>
 #include <atomic>

@@ -48,7 +48,6 @@
 #include "butil/basictypes.h"
 #include "butil/compiler_specific.h"
 #include "butil/threading/platform_thread.h"
-#include "butil/synchronization/lock.h"
 #include "butil/synchronization/waitable_event.h"
 
 namespace butil {
@@ -181,7 +180,7 @@ class BUTIL_EXPORT DelegateSimpleThreadPool
   int num_threads_;
   std::vector<DelegateSimpleThread*> threads_;
   std::queue<Delegate*> delegates_;
-  butil::Lock lock_;            // Locks delegates_
+  std::mutex lock_;            // Locks delegates_
   WaitableEvent dry_;    // Not signaled when there is no work to do.
 };
 

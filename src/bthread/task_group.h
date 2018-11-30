@@ -154,7 +154,7 @@ public:
 
     // Push a bthread into the runqueue from another non-worker thread.
     void ready_to_run_remote(bthread_t tid, bool nosignal = false);
-    void flush_nosignal_tasks_remote_locked(butil::Mutex& locked_mutex);
+    void flush_nosignal_tasks_remote_locked(std::mutex& locked_mutex);
     void flush_nosignal_tasks_remote();
 
     // Automatically decide the caller is remote or local, and call

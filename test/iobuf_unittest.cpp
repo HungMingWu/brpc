@@ -10,6 +10,7 @@
 #include <atomic>
 #include <butil/files/temp_file.h>      // TempFile
 #include <butil/containers/flat_map.h>
+#include <butil/thread_local.h>
 #include <butil/macros.h>
 #include <butil/time.h>                 // Timer
 #include <butil/fd_utility.h>           // make_non_blocking

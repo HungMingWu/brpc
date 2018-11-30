@@ -23,7 +23,6 @@
 #include <mutex>                           // std::lock_guard
 #endif
 
-#include "butil/synchronization/lock.h"
 #include "butil/macros.h"
 #include "butil/logging.h"
 #include "butil/errno.h"

@@ -47,7 +47,7 @@ void AtExitManager::RegisterCallback(AtExitCallbackType func, void* param) {
     return;
   }
 
-  AutoLock lock(g_top_manager->lock_);
+  std::lock_guard lock(g_top_manager->lock_);
   g_top_manager->stack_.push({func, param});
 }
 
@@ -58,7 +58,7 @@ void AtExitManager::ProcessCallbacksNow() {
     return;
   }
 
-  AutoLock lock(g_top_manager->lock_);
+  std::lock_guard lock(g_top_manager->lock_);
 
   while (!g_top_manager->stack_.empty()) {
     Callback task = g_top_manager->stack_.top();

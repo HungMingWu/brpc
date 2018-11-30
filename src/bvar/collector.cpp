@@ -16,6 +16,8 @@
 // Date: Mon Dec 14 19:12:30 CST 2015
 
 #include <map>
+#include <mutex>
+#include <condition_variable>
 #include <gflags/gflags.h>
 #include "butil/memory/singleton_on_pthread_once.h"
 #include "bvar/bvar.h"
@@ -100,11 +102,11 @@ private:
     int64_t _ngrab BAIDU_CACHELINE_ALIGNMENT;
     int64_t _ndrop;
     int64_t _ndump;
-    pthread_mutex_t _dump_thread_mutex;
-    pthread_cond_t _dump_thread_cond;
+    std::mutex _dump_thread_mutex;
+    std::condition_variable _dump_thread_cond;
     butil::LinkNode<Collected> _dump_root;
-    pthread_mutex_t _sleep_mutex;
-    pthread_cond_t _sleep_cond;
+    std::mutex _sleep_mutex;
+    std::condition_variable _sleep_cond;
 };
 
 Collector::Collector()
@@ -116,10 +118,6 @@ Collector::Collector()
     , _ngrab(0)
     , _ndrop(0)
     , _ndump(0) {
-    pthread_mutex_init(&_dump_thread_mutex, NULL);
-    pthread_cond_init(&_dump_thread_cond, NULL);
-    pthread_mutex_init(&_sleep_mutex, NULL);
-    pthread_cond_init(&_sleep_cond, NULL);
     int rc = pthread_create(&_grab_thread, NULL, run_grab_thread, this);
     if (rc != 0) {
         LOG(ERROR) << "Fail to create Collector, " << berror(rc);
@@ -134,10 +132,6 @@ Collector::~Collector() {
         pthread_join(_grab_thread, NULL);
         _created = false;
     }
-    pthread_mutex_destroy(&_dump_thread_mutex);
-    pthread_cond_destroy(&_dump_thread_cond);
-    pthread_mutex_destroy(&_sleep_mutex);
-    pthread_cond_destroy(&_sleep_cond);
 }
 
 template <typename T>
@@ -241,9 +235,9 @@ void Collector::grab_thread() {
             if (root.next() != &root) {  // non empty
                 butil::LinkNode<Collected>* head2 = root.next();
                 root.RemoveFromList();
-                BAIDU_SCOPED_LOCK(_dump_thread_mutex);
+                std::lock_guard guard(_dump_thread_mutex);
                 head2->InsertBeforeAsList(&_dump_root);
-                pthread_cond_signal(&_dump_thread_cond);
+                _dump_thread_cond.notify_one();
             }
         }
         int64_t now = butil::cpuwide_time_us();
@@ -262,26 +256,23 @@ void Collector::grab_thread() {
 
         // sleep for the next round.
         if (!_stop && abstime > now) {
-            timespec abstimespec = butil::microseconds_from_now(abstime - now);
-            pthread_mutex_lock(&_sleep_mutex);
-            pthread_cond_timedwait(&_sleep_cond, &_sleep_mutex, &abstimespec);
-            pthread_mutex_unlock(&_sleep_mutex);
+            std::unique_lock lock(_sleep_mutex);
+            _sleep_cond.wait_for(lock, std::chrono::microseconds(abstime - now));
         }
         _last_active_cpuwide_us = butil::cpuwide_time_us();
     }
     // make sure _stop is true, we may have other reasons to quit above loop
     {
-        BAIDU_SCOPED_LOCK(_dump_thread_mutex);
+        std::lock_guard guard(_dump_thread_mutex);
         _stop = true; 
-        pthread_cond_signal(&_dump_thread_cond);
+        _dump_thread_cond.notify_one();
     }
     CHECK_EQ(0, pthread_join(_dump_thread, NULL));
 }
 
 void Collector::wakeup_grab_thread() {
-    pthread_mutex_lock(&_sleep_mutex);
-    pthread_cond_signal(&_sleep_cond);
-    pthread_mutex_unlock(&_sleep_mutex);
+    std::unique_lock lock(_sleep_mutex);
+    _sleep_cond.wait(lock);
 }
 
 // Adjust speed_limit to match collected samples per second
@@ -376,11 +367,11 @@ void Collector::dump_thread() {
         // Get new samples set by grab_thread.
         butil::LinkNode<Collected>* newhead = NULL;
         {
-            BAIDU_SCOPED_LOCK(_dump_thread_mutex);
+            std::unique_lock lock(_dump_thread_mutex);
             while (!_stop && _dump_root.next() == &_dump_root) {
                 const int64_t now_ns = butil::cpuwide_time_ns();
                 busy_seconds += (now_ns - last_ns) / 1000000000.0;
-                pthread_cond_wait(&_dump_thread_cond, &_dump_thread_mutex);
+                _dump_thread_cond.wait(lock);
                 last_ns = butil::cpuwide_time_ns();
             }
             if (_stop) {

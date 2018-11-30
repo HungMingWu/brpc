@@ -16,6 +16,8 @@
 
 #include <deque>
 #include <vector>
+#include <mutex>
+#include <condition_variable>
 #include <gflags/gflags.h>
 #include "butil/scoped_lock.h"
 #ifdef BAIDU_INTERNAL
@@ -59,9 +61,9 @@ struct UserCodeBackupPool {
     void UserCodeRunningLoop();
 };
 
-static pthread_mutex_t s_usercode_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t s_usercode_cond = PTHREAD_COND_INITIALIZER;
-static pthread_once_t s_usercode_init = PTHREAD_ONCE_INIT;
+static std::mutex s_usercode_mutex;
+static std::condition_variable s_usercode_cond;
+static std::once_flag s_usercode_init;
 std::atomic<int> g_usercode_inplace { 0 };
 bool g_too_many_usercode = false;
 static UserCodeBackupPool* s_usercode_pool = NULL;
@@ -118,9 +120,9 @@ void UserCodeBackupPool::UserCodeRunningLoop() {
         bool blocked = false;
         UserCode usercode = { NULL, NULL };
         {
-            BAIDU_SCOPED_LOCK(s_usercode_mutex);
+            std::unique_lock lock(s_usercode_mutex);
             while (queue.empty()) {
-                pthread_cond_wait(&s_usercode_cond, &s_usercode_mutex);
+                s_usercode_cond.wait(lock);
                 blocked = true;
             }
             usercode = queue.front();
@@ -151,7 +153,7 @@ static void InitUserCodeBackupPool() {
 }
 
 void InitUserCodeBackupPoolOnceOrDie() {
-    pthread_once(&s_usercode_init, InitUserCodeBackupPool);
+    std::call_once(s_usercode_init, InitUserCodeBackupPool);
 }
 
 void EndRunningUserCodeInPool(void (*fn)(void*), void* arg) {
@@ -163,7 +165,7 @@ void EndRunningUserCodeInPool(void (*fn)(void*), void* arg) {
     // all workers from being blocked and no responses will be processed
     // anymore (deadlocked).
     const UserCode usercode = { fn, arg };
-    pthread_mutex_lock(&s_usercode_mutex);
+    std::lock_guard lock(s_usercode_mutex);
     s_usercode_pool->queue.push_back(usercode);
     // If the queue has too many items, we can't drop the user code
     // directly which often must be run, for example: client-side done.
@@ -175,8 +177,7 @@ void EndRunningUserCodeInPool(void (*fn)(void*), void* arg) {
          FLAGS_max_pending_in_each_backup_thread)) {
         g_too_many_usercode = true;
     }
-    pthread_mutex_unlock(&s_usercode_mutex);
-    pthread_cond_signal(&s_usercode_cond);
+    s_usercode_cond.notify_one();
 }
 
 } // namespace brpc

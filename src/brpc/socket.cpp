@@ -115,7 +115,7 @@ public:
 private:
     // options used to create this instance
     SocketOptions _options;
-    butil::Mutex _mutex;
+    std::mutex _mutex;
     std::vector<SocketId> _pool;
     butil::EndPoint _remote_side;
     std::atomic<int> _numfree; // #free sockets in all sub pools.

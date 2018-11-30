@@ -14,20 +14,20 @@
 
 // Authors: Ge,Jun (gejun@baidu.com)
 
-#include <pthread.h>
+#include <mutex>
 #include "brpc/builtin/sorttable_js.h"
 
 
 namespace brpc {
 
-static pthread_once_t s_sorttable_buf_once = PTHREAD_ONCE_INIT; 
+static std::once_flag s_sorttable_buf_once;
 static butil::IOBuf* s_sorttable_buf = NULL;
 static void InitSortTableBuf() {
     s_sorttable_buf = new butil::IOBuf;
     s_sorttable_buf->append(sorttable_js());
 }
 const butil::IOBuf& sorttable_js_iobuf() {
-    pthread_once(&s_sorttable_buf_once, InitSortTableBuf);
+    std::call_once(s_sorttable_buf_once, InitSortTableBuf);
     return *s_sorttable_buf;
 }
 

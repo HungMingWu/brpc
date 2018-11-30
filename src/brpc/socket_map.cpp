@@ -198,7 +198,7 @@ void SocketMap::Print(std::ostream& os) {
     // TODO: Elaborate.
     size_t count = 0;
     {
-        std::unique_lock<butil::Mutex> mu(_mutex);
+        std::unique_lock mu(_mutex);
         count = _map.size();
     }
     os << "count=" << count;
@@ -210,7 +210,7 @@ void SocketMap::PrintSocketMap(std::ostream& os, void* arg) {
 
 int SocketMap::Insert(const SocketMapKey& key, SocketId* id,
                       const std::shared_ptr<SocketSSLContext>& ssl_ctx) {
-    std::unique_lock<butil::Mutex> mu(_mutex);
+    std::unique_lock mu(_mutex);
     SingleConnection* sc = _map.seek(key);
     if (sc) {
         if (!sc->socket->Failed() ||
@@ -268,7 +268,7 @@ void SocketMap::Remove(const SocketMapKey& key, SocketId expected_id) {
 void SocketMap::RemoveInternal(const SocketMapKey& key,
                                SocketId expected_id,
                                bool remove_orphan) {
-    std::unique_lock<butil::Mutex> mu(_mutex);
+    std::unique_lock mu(_mutex);
     SingleConnection* sc = _map.seek(key);
     if (!sc) {
         return;

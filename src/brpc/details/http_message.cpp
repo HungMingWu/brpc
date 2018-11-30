@@ -179,7 +179,7 @@ int HttpMessage::on_headers_complete(http_parser *parser) {
     return 0;
 }
 
-int HttpMessage::UnlockAndFlushToBodyReader(std::unique_lock<butil::Mutex>& mu) {
+int HttpMessage::UnlockAndFlushToBodyReader(std::unique_lock<std::mutex>& mu) {
     if (_body.empty()) {
         mu.unlock();
         return 0;
@@ -246,7 +246,7 @@ int HttpMessage::OnBody(const char *at, const size_t length) {
         return 0;
     }
     // Progressive read.
-    std::unique_lock<butil::Mutex> mu(_body_mutex);
+    std::unique_lock mu(_body_mutex);
     ProgressiveReader* r = _body_reader;
     while (r == NULL) {
         // When _body is full, the sleep-waiting may block parse handler
@@ -298,7 +298,7 @@ int HttpMessage::OnMessageComplete() {
         return 0;
     }
     // Progressive read.
-    std::unique_lock<butil::Mutex> mu(_body_mutex);
+    std::unique_lock mu(_body_mutex);
     _stage = HTTP_ON_MESSAGE_COMPLELE;
     if (_body_reader != NULL) {
         // Solve the case: SetBodyReader quit at ntry=MAX_TRY with non-empty
@@ -327,7 +327,7 @@ public:
 };
 
 static FailAllRead* s_fail_all_read = NULL;
-static pthread_once_t s_fail_all_read_once = PTHREAD_ONCE_INIT;
+static std::once_flag s_fail_all_read_once;
 static void CreateFailAllRead() { s_fail_all_read = new FailAllRead; }
 
 void HttpMessage::SetBodyReader(ProgressiveReader* r) {
@@ -339,7 +339,7 @@ void HttpMessage::SetBodyReader(ProgressiveReader* r) {
     const int MAX_TRY = 3;
     int ntry = 0;
     do {
-        std::unique_lock<butil::Mutex> mu(_body_mutex);
+        std::unique_lock mu(_body_mutex);
         if (_body_reader != NULL) {
             mu.unlock();
             return r->OnEndOfMessage(
@@ -371,7 +371,7 @@ void HttpMessage::SetBodyReader(ProgressiveReader* r) {
                 // Make OnBody() or OnMessageComplete() fail on next call to
                 // close the socket. If the message was already complete, the
                 // socket will not be closed.
-                pthread_once(&s_fail_all_read_once, CreateFailAllRead);
+                std::call_once(s_fail_all_read_once, CreateFailAllRead);
                 r = s_fail_all_read;
                 ntry = MAX_TRY;
                 break;

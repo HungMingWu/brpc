@@ -65,7 +65,6 @@ typedef FILE* FileHandle;
 #include "butil/strings/string_util.h"
 #include "butil/strings/stringprintf.h"
 #include "butil/strings/utf_string_conversions.h"
-#include "butil/synchronization/lock.h"
 #include "butil/threading/platform_thread.h"
 #if defined(OS_POSIX)
 #include "butil/errno.h"
@@ -241,7 +240,7 @@ public:
             return;
         lock_log_file = lock_log;
         if (lock_log_file != LOCK_LOG_FILE) {
-            log_lock = new butil::Mutex;
+            log_lock = new std::mutex;
         }
         initialized = true;
     }
@@ -266,7 +265,7 @@ private:
 
     // The lock is used if log file locking is false. It helps us avoid problems
     // with multiple threads writing to the log file at the same time.
-    static butil::Mutex* log_lock;
+    static std::mutex* log_lock;
 
     // When we don't use a lock, we are using a global mutex. We need to do this
     // because LockFileEx is not thread safe.
@@ -279,7 +278,7 @@ private:
 // static
 bool LoggingLock::initialized = false;
 // static
-butil::Mutex* LoggingLock::log_lock = NULL;
+std::mutex* LoggingLock::log_lock = NULL;
 // static
 LogLockingState LoggingLock::lock_log_file = LOCK_LOG_FILE;
 
@@ -563,7 +562,7 @@ bool StringSink::OnLogMessage(int severity, const char* file, int line,
     print_log_prefix(prefix_os, severity, file, line);
     const std::string prefix = prefix_os.str();
     {
-        butil::AutoLock lock_guard(_lock);
+        std::lock_guard lock_guard(_lock);
         reserve(size() + prefix.size() + content.size());
         append(prefix);
         append(content.data(), content.size());
@@ -616,7 +615,7 @@ LogStream& LogStream::SetPosition(const PathChar* file, int line,
 #if defined(__GNUC__)
 static bthread_key_t stream_bkey;
 static pthread_key_t stream_pkey;
-static pthread_once_t create_stream_key_once = PTHREAD_ONCE_INIT;
+static std::once_flag create_stream_key_once;
 inline bool is_bthread_linked() { return bthread_key_create != NULL; }
 static void destroy_tls_streams(void* data) {
     if (data == NULL) {
@@ -644,7 +643,7 @@ static void create_stream_key_or_die() {
     }
 }
 static LogStream** get_tls_stream_array() {
-    pthread_once(&create_stream_key_once, create_stream_key_or_die);
+    std::call_once(create_stream_key_once, create_stream_key_or_die);
     if (is_bthread_linked()) {
         return (LogStream**)bthread_getspecific(stream_bkey);
     } else {
@@ -1018,11 +1017,11 @@ struct VModuleList;
 
 extern const int VLOG_UNINITIALIZED = std::numeric_limits<int>::max();
 
-static pthread_mutex_t vlog_site_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex vlog_site_list_mutex;
 static VLogSite* vlog_site_list = NULL;
 static VModuleList* vmodule_list = NULL;
 
-static pthread_mutex_t reset_vmodule_and_v_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex reset_vmodule_and_v_mutex;
 
 static const int64_t DELAY_DELETION_SEC = 10;
 static std::deque<std::pair<VModuleList*, int64_t> >*
@@ -1231,7 +1230,7 @@ private:
 static int vlog_site_list_add(VLogSite* site,
                               VModuleList** expected_module_list,
                               int* expected_default_v) {
-    BAIDU_SCOPED_LOCK(vlog_site_list_mutex);
+    std::lock_guard lock(vlog_site_list_mutex);
     if (vmodule_list != *expected_module_list) {
         *expected_module_list = vmodule_list;
         return -1;
@@ -1267,7 +1266,7 @@ bool add_vlog_site(const int** v, const char* filename, int line_no,
 void print_vlog_sites(VLogSitePrinter* printer) {
     VLogSite* head = NULL;
     {
-        BAIDU_SCOPED_LOCK(vlog_site_list_mutex);
+        std::lock_guard lock(vlog_site_list_mutex);
         head = vlog_site_list;
     }
     VLogSitePrinter::Site site;
@@ -1283,7 +1282,7 @@ void print_vlog_sites(VLogSitePrinter* printer) {
 // [Thread-safe] Reset FLAGS_vmodule.
 static int on_reset_vmodule(const char* vmodule) {
     // resetting must be serialized.
-    BAIDU_SCOPED_LOCK(reset_vmodule_and_v_mutex);
+    std::lock_guard lock(reset_vmodule_and_v_mutex);
     
     VModuleList* module_list = new (std::nothrow) VModuleList;
     if (NULL == module_list) {
@@ -1300,7 +1299,7 @@ static int on_reset_vmodule(const char* vmodule) {
     VLogSite* old_vlog_site_list = NULL;
     {
         {
-            BAIDU_SCOPED_LOCK(vlog_site_list_mutex);
+            std::lock_guard lock(vlog_site_list_mutex);
             old_module_list = vmodule_list;
             vmodule_list = module_list;
             old_vlog_site_list = vlog_site_list;
@@ -1343,9 +1342,9 @@ static void on_reset_verbose(int default_v) {
     VLogSite* cur_vlog_site_list = NULL;
     {
         // resetting must be serialized.
-        BAIDU_SCOPED_LOCK(reset_vmodule_and_v_mutex);
+        std::lock_guard lock(reset_vmodule_and_v_mutex);
         {
-            BAIDU_SCOPED_LOCK(vlog_site_list_mutex);
+            std::lock_guard lock(vlog_site_list_mutex);
             cur_module_list = vmodule_list;
             cur_vlog_site_list = vlog_site_list;
         }

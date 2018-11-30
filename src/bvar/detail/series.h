@@ -103,14 +103,11 @@ public:
         , _nminute(0)
         , _nhour(0)
         , _nday(0) {
-        pthread_mutex_init(&_mutex, NULL);
     }
-    ~SeriesBase() {
-        pthread_mutex_destroy(&_mutex);
-    }
+    ~SeriesBase()  = default;
 
     void append(const T& value) {
-        BAIDU_SCOPED_LOCK(_mutex);
+        std::lock_guard guard(_mutex);
         return append_second(value, _op);
     }
 
@@ -147,7 +144,7 @@ private:
 
 protected:
     Op _op;
-    mutable pthread_mutex_t _mutex;
+    mutable std::mutex _mutex;
     char _nsecond;
     char _nminute;
     char _nhour;
@@ -229,7 +226,7 @@ template <typename T, typename Op>
 void Series<T, Op>::describe(std::ostream& os,
                              const std::string* vector_names) const {
     CHECK(vector_names == NULL);
-    pthread_mutex_lock(&this->_mutex);
+    std::unique_lock lock(this->_mutex);
     const int second_begin = this->_nsecond;
     const int minute_begin = this->_nminute;
     const int hour_begin = this->_nhour;
@@ -237,7 +234,7 @@ void Series<T, Op>::describe(std::ostream& os,
     // NOTE: we don't save _data which may be inconsistent sometimes, but
     // this output is generally for "peeking the trend" and does not need
     // to exactly accurate.
-    pthread_mutex_unlock(&this->_mutex);
+    lock.unlock();
     int c = 0;
     os << "{\"label\":\"trend\",\"data\":[";
     for (int i = 0; i < 30; ++i, ++c) {
@@ -270,7 +267,7 @@ void Series<T, Op>::describe(std::ostream& os,
 template <typename T, size_t N, typename Op>
 void Series<Vector<T,N>, Op>::describe(std::ostream& os,
                                        const std::string* vector_names) const {
-    pthread_mutex_lock(&this->_mutex);
+    std::unique_lock lock(this->_mutex);
     const int second_begin = this->_nsecond;
     const int minute_begin = this->_nminute;
     const int hour_begin = this->_nhour;
@@ -278,7 +275,7 @@ void Series<Vector<T,N>, Op>::describe(std::ostream& os,
     // NOTE: we don't save _data which may be inconsistent sometimes, but
     // this output is generally for "peeking the trend" and does not need
     // to exactly accurate.
-    pthread_mutex_unlock(&this->_mutex);
+    lock.unlock();;
 
     butil::StringSplitter sp(vector_names ? vector_names->c_str() : "", ',');
     os << '[';

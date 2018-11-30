@@ -104,7 +104,7 @@ void ExecutionQueueBase::start_execute(TaskNode* node) {
     bthread_t tid;
     // We start the execution thread in background instead of foreground as
     // we can't determine whether the code after execute() is urgent (like
-    // unlock a pthread_mutex_t) in which case implicit context switch may
+    // unlock a std::mutex_ in which case implicit context switch may
     // cause undefined behavior (e.g. deadlock)
     if (bthread_start_background(&tid, &_options.bthread_attr, 
                 _execute_tasks, node) != 0) {

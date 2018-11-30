@@ -14,6 +14,7 @@
 
 // Authors: Ge,Jun (gejun@baidu.com)
 
+#include <mutex>
 #include <netinet/in.h>
 #include <gflags/gflags.h>
 #include <leveldb/db.h>
@@ -342,7 +343,7 @@ static int64_t g_last_time_key = 0;
 static int64_t g_last_delete_tm = 0;
 
 // Following variables are monitored by builtin services, thus non-static.
-static pthread_mutex_t g_span_db_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex g_span_db_mutex;
 static bool g_span_ending = false;  // don't open span again if this var is true.
 // Can't use intrusive_ptr which has ctor/dtor issues.
 static SpanDB* g_span_db = NULL;
@@ -377,7 +378,7 @@ bvar::CollectorPreprocessor* Span::preprocessor() {
 static void ResetSpanDB(SpanDB* db) {
     SpanDB* old_db = NULL;
     {
-        BAIDU_SCOPED_LOCK(g_span_db_mutex);
+        std::lock_guard guard(g_span_db_mutex);
         old_db = g_span_db;
         g_span_db = db;
         if (g_span_db) {
@@ -408,7 +409,7 @@ static int StartIndexingIfNeeded() {
 }
 
 inline int GetSpanDB(butil::intrusive_ptr<SpanDB>* db) {
-    BAIDU_SCOPED_LOCK(g_span_db_mutex);
+    std::lock_guard guard(g_span_db_mutex);
     if (g_span_db != NULL) {
         *db = g_span_db;
         return 0;

@@ -20,8 +20,8 @@
 #define BUTIL_OBJECT_POOL_INL_H
 
 #include <atomic>
+#include <mutex>
 #include <iostream>                      // std::ostream
-#include <pthread.h>                     // pthread_mutex_t
 #include <algorithm>                     // std::max, std::min
 #include "butil/macros.h"                 // BAIDU_CACHELINE_ALIGNMENT
 #include "butil/scoped_lock.h"            // BAIDU_SCOPED_LOCK
@@ -305,25 +305,21 @@ public:
         if (p) {
             return p;
         }
-        pthread_mutex_lock(&_singleton_mutex);
+        std::lock_guard lock(_singleton_mutex);
         p = _singleton.load(std::memory_order_consume);
         if (!p) {
             p = new ObjectPool();
             _singleton.store(p, std::memory_order_release);
         }
-        pthread_mutex_unlock(&_singleton_mutex);
         return p;
     }
 
 private:
     ObjectPool() {
         _free_chunks.reserve(OP_INITIAL_FREE_LIST_SIZE);
-        pthread_mutex_init(&_free_chunks_mutex, NULL);
     }
 
-    ~ObjectPool() {
-        pthread_mutex_destroy(&_free_chunks_mutex);
-    }
+    ~ObjectPool() = default;
 
     // Create a Block and append it to right-most BlockGroup.
     static Block* add_block(size_t* index) {
@@ -358,7 +354,7 @@ private:
     // Shall be called infrequently because a BlockGroup is pretty big.
     static bool add_block_group(size_t old_ngroup) {
         BlockGroup* bg = NULL;
-        BAIDU_SCOPED_LOCK(_block_group_mutex);
+        std::lock_guard lock(_block_group_mutex);
         const size_t ngroup = _ngroup.load(std::memory_order_acquire);
         if (ngroup != old_ngroup) {
             // Other thread got lock and added group before this thread.
@@ -385,7 +381,7 @@ private:
         if (NULL == lp) {
             return NULL;
         }
-        BAIDU_SCOPED_LOCK(_change_thread_mutex); //avoid race with clear()
+        std::lock_guard lock(_change_thread_mutex); //avoid race with clear()
         _local_pool = lp;
         butil::thread_atexit(LocalPool::delete_local_pool, lp);
         _nlocal.fetch_add(1, std::memory_order_relaxed);
@@ -407,7 +403,7 @@ private:
         // be deallocated correctly in tests, so wrap the function with 
         // a macro which is only defined in unittests.
 #ifdef BAIDU_CLEAR_OBJECT_POOL_AFTER_ALL_THREADS_QUIT
-        BAIDU_SCOPED_LOCK(_change_thread_mutex);  // including acquire fence.
+        std::lock_guard lock(_change_thread_mutex);  // including acquire fence.
         // Do nothing if there're active threads.
         if (_nlocal.load(std::memory_order_relaxed) != 0) {
             return;
@@ -453,14 +449,13 @@ private:
         if (_free_chunks.empty()) {
             return false;
         }
-        pthread_mutex_lock(&_free_chunks_mutex);
+        std::unique_lock lock(_free_chunks_mutex);
         if (_free_chunks.empty()) {
-            pthread_mutex_unlock(&_free_chunks_mutex);
             return false;
         }
         DynamicFreeChunk* p = _free_chunks.back();
         _free_chunks.pop_back();
-        pthread_mutex_unlock(&_free_chunks_mutex);
+        lock.unlock();
         c.nfree = p->nfree;
         memcpy(c.ptrs, p->ptrs, sizeof(*p->ptrs) * p->nfree);
         free(p);
@@ -475,23 +470,22 @@ private:
         }
         p->nfree = c.nfree;
         memcpy(p->ptrs, c.ptrs, sizeof(*c.ptrs) * c.nfree);
-        pthread_mutex_lock(&_free_chunks_mutex);
+	std::lock_guard lock(_free_chunks_mutex);
         _free_chunks.push_back(p);
-        pthread_mutex_unlock(&_free_chunks_mutex);
         return true;
     }
     
     static std::atomic<ObjectPool*> _singleton;
-    static pthread_mutex_t _singleton_mutex;
+    static std::mutex _singleton_mutex;
     static BAIDU_THREAD_LOCAL LocalPool* _local_pool;
     static std::atomic<long> _nlocal;
     static std::atomic<size_t> _ngroup;
-    static pthread_mutex_t _block_group_mutex;
-    static pthread_mutex_t _change_thread_mutex;
+    static std::mutex _block_group_mutex;
+    static std::mutex _change_thread_mutex;
     static std::atomic<BlockGroup*> _block_groups[OP_MAX_BLOCK_NGROUP];
 
     std::vector<DynamicFreeChunk*> _free_chunks;
-    pthread_mutex_t _free_chunks_mutex;
+    std::mutex _free_chunks_mutex;
 
 #ifdef BUTIL_OBJECT_POOL_NEED_FREE_ITEM_NUM
     static std::atomic<size_t> _global_nfree;
@@ -511,7 +505,7 @@ template <typename T>
 std::atomic<ObjectPool<T>*> ObjectPool<T>::_singleton { nullptr };
 
 template <typename T>
-pthread_mutex_t ObjectPool<T>::_singleton_mutex = PTHREAD_MUTEX_INITIALIZER;
+std::mutex ObjectPool<T>::_singleton_mutex;
 
 template <typename T>
 std::atomic<long> ObjectPool<T>::_nlocal { 0 };
@@ -520,10 +514,10 @@ template <typename T>
 std::atomic<size_t> ObjectPool<T>::_ngroup { 0 };
 
 template <typename T>
-pthread_mutex_t ObjectPool<T>::_block_group_mutex = PTHREAD_MUTEX_INITIALIZER;
+std::mutex ObjectPool<T>::_block_group_mutex;
 
 template <typename T>
-pthread_mutex_t ObjectPool<T>::_change_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+std::mutex ObjectPool<T>::_change_thread_mutex;
 
 template <typename T>
 std::atomic<typename ObjectPool<T>::BlockGroup*>

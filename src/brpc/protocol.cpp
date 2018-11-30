@@ -25,6 +25,7 @@ const uint64_t PB_TOTAL_BYETS_LIMITS =
     PB_TOTAL_BYETS_LIMITS_RAW < 0 ? (uint64_t)-1LL : PB_TOTAL_BYETS_LIMITS_RAW;
 #undef private
 
+#include <mutex>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <gflags/gflags.h>
 #include "butil/logging.h"
@@ -62,7 +63,7 @@ struct ProtocolMap {
 inline ProtocolEntry* get_protocol_map() {
     return butil::get_leaky_singleton<ProtocolMap>()->entries;
 }
-static pthread_mutex_t s_protocol_map_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex s_protocol_map_mutex;
 
 int RegisterProtocol(ProtocolType type, const Protocol& protocol) {
     const size_t index = type;
@@ -76,7 +77,7 @@ int RegisterProtocol(ProtocolType type, const Protocol& protocol) {
         return -1;
     }
     ProtocolEntry* const protocol_map = get_protocol_map();
-    BAIDU_SCOPED_LOCK(s_protocol_map_mutex);
+    std::lock_guard guard(s_protocol_map_mutex);
     if (protocol_map[index].valid.load(std::memory_order_relaxed)) {
         LOG(ERROR) << "ProtocolType=" << type << " was registered";
         return -1;

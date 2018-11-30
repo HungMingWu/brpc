@@ -15,6 +15,7 @@
 // Authors: Ge,Jun (gejun@baidu.com)
 
 #include <stdio.h>
+#include <mutex>
 #include <gflags/gflags.h>
 #include "butil/files/file_enumerator.h"
 #include "butil/file_util.h"                     // butil::FilePath
@@ -80,21 +81,15 @@ struct ProfilingResult {
 static bool g_written_pprof_perl = false;
 
 struct ProfilingEnvironment {
-    pthread_mutex_t mutex;
-    int64_t cur_id;
-    ProfilingClient* client;
-    std::vector<ProfilingWaiter>* waiters;
-    ProfilingResult* cached_result;
+    std::mutex mutex;
+    int64_t cur_id = 0;
+    ProfilingClient* client = nullptr;
+    std::vector<ProfilingWaiter>* waiters = nullptr;;
+    ProfilingResult* cached_result = nullptr;;
 };
 
 // Different ProfilingType have different env.
-static ProfilingEnvironment g_env[4] = {
-    { PTHREAD_MUTEX_INITIALIZER, 0, NULL, NULL, NULL },
-    { PTHREAD_MUTEX_INITIALIZER, 0, NULL, NULL, NULL },
-    { PTHREAD_MUTEX_INITIALIZER, 0, NULL, NULL, NULL },
-    { PTHREAD_MUTEX_INITIALIZER, 0, NULL, NULL, NULL }
-};
-
+static ProfilingEnvironment g_env[4];
 // The `content' should be small so that it can be written into file in one
 // fwrite (at most time).
 static bool WriteSmallFile(const char* filepath_in,
@@ -270,7 +265,7 @@ static void ConsumeWaiters(ProfilingType type, const Controller* cur_cntl,
     }
     ProfilingEnvironment& env = g_env[type];
     if (env.client) {
-        BAIDU_SCOPED_LOCK(env.mutex);
+        std::lock_guard guard(env.mutex);
         if (env.client == NULL) {
             return;
         }
@@ -584,7 +579,7 @@ static void DoProfiling(ProfilingType type,
     }
 
     {
-        BAIDU_SCOPED_LOCK(g_env[type].mutex);
+        std::lock_guard guard(g_env[type].mutex);
         if (g_env[type].client) {
             if (NULL == g_env[type].waiters) {
                 g_env[type].waiters = new std::vector<ProfilingWaiter>;
@@ -801,7 +796,7 @@ static void StartProfiling(ProfilingType type,
     size_t nwaiters = 0;
     ProfilingEnvironment & env = g_env[type];
     if (view == NULL) {
-        BAIDU_SCOPED_LOCK(env.mutex);
+        std::lock_guard guard(env.mutex);
         if (env.client) {
             profiling_client = *env.client;
             nwaiters = (env.waiters ? env.waiters->size() : 0);

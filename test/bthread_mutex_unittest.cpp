@@ -2,6 +2,7 @@
 // Author: Ge,Jun (gejun@baidu.com)
 // Date: Sun Jul 13 15:04:18 CST 2014
 
+#include <mutex>
 #include <gtest/gtest.h>
 #include "butil/compat.h"
 #include "butil/time.h"
@@ -208,7 +209,7 @@ void PerfTest(Mutex* mutex,
 
 TEST(MutexTest, performance) {
     const int thread_num = 12;
-    butil::Mutex base_mutex;
+    std::mutex base_mutex;
     PerfTest(&base_mutex, (pthread_t*)NULL, thread_num, pthread_create, pthread_join);
     PerfTest(&base_mutex, (bthread_t*)NULL, thread_num, bthread_start_background, bthread_join);
     bthread::Mutex bth_mutex;

@@ -499,7 +499,7 @@ inline void EncodeInteger(butil::IOBufAppender* out, uint8_t msb,
 // Static variables
 static HuffmanTree* s_huffman_tree = NULL;
 static IndexTable* s_static_table = NULL;
-static pthread_once_t s_create_once = PTHREAD_ONCE_INIT;
+static std::once_flag s_create_once;
 
 static void CreateStaticTableOrDie() {
     s_huffman_tree = new HuffmanTree;
@@ -520,10 +520,7 @@ static void CreateStaticTableOrDie() {
 }
 
 static void CreateStaticTableOnceOrDie() {
-    if (pthread_once(&s_create_once, CreateStaticTableOrDie) != 0) {
-        PLOG(ERROR) << "Fail to pthread_once";
-        exit(1);
-    }
+    std::call_once(s_create_once, CreateStaticTableOrDie);
 }
 
 // Assume that no header would be larger than 10MB

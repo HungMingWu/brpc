@@ -69,7 +69,7 @@ private:
     unsigned _futex;
 };
 #else
-typedef butil::Mutex FastPthreadMutex;
+typedef std::mutex FastPthreadMutex;
 #endif
 }
 

@@ -72,7 +72,7 @@ private:
 friend class TaskGroup;
     DISALLOW_COPY_AND_ASSIGN(RemoteTaskQueue);
     butil::BoundedQueue<bthread_t> _tasks;
-    butil::Mutex _mutex;
+    std::mutex _mutex;
 };
 
 }  // namespace bthread

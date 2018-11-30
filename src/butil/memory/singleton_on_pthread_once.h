@@ -18,22 +18,22 @@
 #ifndef BUTIL_MEMORY_SINGLETON_ON_PTHREAD_ONCE_H
 #define BUTIL_MEMORY_SINGLETON_ON_PTHREAD_ONCE_H
 
-#include <pthread.h>
 #include <atomic>
+#include <mutex>
 
 namespace butil {
 
 template <typename T> class GetLeakySingleton {
 public:
     static std::atomic_intptr_t g_leaky_singleton_untyped;
-    static pthread_once_t g_create_leaky_singleton_once;
+    static std::once_flag g_create_leaky_singleton_once;
     static void create_leaky_singleton();
 };
 template <typename T>
 std::atomic_intptr_t GetLeakySingleton<T>::g_leaky_singleton_untyped { 0 };
 
 template <typename T>
-pthread_once_t GetLeakySingleton<T>::g_create_leaky_singleton_once = PTHREAD_ONCE_INIT;
+std::once_flag GetLeakySingleton<T>::g_create_leaky_singleton_once;
 
 template <typename T>
 void GetLeakySingleton<T>::create_leaky_singleton() {
@@ -54,7 +54,7 @@ inline T* get_leaky_singleton() {
     if (value) {
         return reinterpret_cast<T*>(value);
     }
-    pthread_once(&GetLeakySingleton<T>::g_create_leaky_singleton_once,
+    std::call_once(GetLeakySingleton<T>::g_create_leaky_singleton_once,
                  GetLeakySingleton<T>::create_leaky_singleton);
     return reinterpret_cast<T*>(
         GetLeakySingleton<T>::g_leaky_singleton_untyped.load());

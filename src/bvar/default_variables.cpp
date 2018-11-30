@@ -126,11 +126,8 @@ template <typename T>
 class CachedReader {
 public:
     CachedReader() : _mtime_us(0) {
-        CHECK_EQ(0, pthread_mutex_init(&_mutex, NULL));
     }
-    ~CachedReader() {
-        pthread_mutex_destroy(&_mutex);
-    }
+    ~CachedReader()  = default;
 
     // NOTE: may return a volatile value that may be overwritten at any time.
     // This is acceptable right now. Both 32-bit and 64-bit numbers are atomic
@@ -142,28 +139,27 @@ public:
         CachedReader* p = butil::get_leaky_singleton<CachedReader>();
         const int64_t now = butil::gettimeofday_us();
         if (now > p->_mtime_us + CACHED_INTERVAL_US) {
-            pthread_mutex_lock(&p->_mutex);
+            std::unique_lock lock(p->_mutex);
             if (now > p->_mtime_us + CACHED_INTERVAL_US) {
                 p->_mtime_us = now;
-                pthread_mutex_unlock(&p->_mutex);
+                lock.unlock();
                 // don't run fn inside lock otherwise a slow fn may
                 // block all concurrent bvar dumppers. (e.g. /vars)
                 T result;
                 if (fn(&result)) {
-                    pthread_mutex_lock(&p->_mutex);
+                    lock.lock();
                     p->_cached = result;
                 } else {
-                    pthread_mutex_lock(&p->_mutex);
+                   lock.lock();
                 }
             }
-            pthread_mutex_unlock(&p->_mutex);
         }
         return p->_cached;
     }
 
 private:
     int64_t _mtime_us;
-    pthread_mutex_t _mutex;
+    std::mutex _mutex;
     T _cached;
 };
 
@@ -801,7 +797,7 @@ PassiveStatus<std::string> g_kernel_version(
     "kernel_version", get_kernel_version, NULL);
 
 static std::string* s_gcc_version = NULL;
-pthread_once_t g_gen_gcc_version_once = PTHREAD_ONCE_INIT;
+std::once_flag g_gen_gcc_version_once;
 
 void gen_gcc_version() {
 
@@ -846,7 +842,7 @@ void gen_gcc_version() {
 }
 
 void get_gcc_version(std::ostream& os, void*) {
-    pthread_once(&g_gen_gcc_version_once, gen_gcc_version);
+    std::call_once(g_gen_gcc_version_once, gen_gcc_version);
     os << *s_gcc_version;
 }
 

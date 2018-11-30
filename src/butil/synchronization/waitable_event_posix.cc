@@ -4,11 +4,11 @@
 
 #include <algorithm>
 #include <vector>
+#include <mutex>
+#include <condition_variable>
 
 #include "butil/logging.h"
 #include "butil/synchronization/waitable_event.h"
-#include "butil/synchronization/condition_variable.h"
-#include "butil/synchronization/lock.h"
 #include "butil/threading/thread_restrictions.h"
 #include "butil/time/time.h"
 
@@ -46,12 +46,12 @@ WaitableEvent::~WaitableEvent() {
 }
 
 void WaitableEvent::Reset() {
-  butil::AutoLock locked(kernel_->lock_);
+  std::lock_guard locked(kernel_->lock_);
   kernel_->signaled_ = false;
 }
 
 void WaitableEvent::Signal() {
-  butil::AutoLock locked(kernel_->lock_);
+  std::lock_guard locked(kernel_->lock_);
 
   if (kernel_->signaled_)
     return;
@@ -68,7 +68,7 @@ void WaitableEvent::Signal() {
 }
 
 bool WaitableEvent::IsSignaled() {
-  butil::AutoLock locked(kernel_->lock_);
+  std::lock_guard locked(kernel_->lock_);
 
   const bool result = kernel_->signaled_;
   if (result && !kernel_->manual_reset_)
@@ -87,13 +87,11 @@ class SyncWaiter : public WaitableEvent::Waiter {
  public:
   SyncWaiter()
       : fired_(false),
-        signaling_event_(NULL),
-        lock_(),
-        cv_(&lock_) {
+        signaling_event_(NULL) {
   }
 
   virtual bool Fire(WaitableEvent* signaling_event) OVERRIDE {
-    butil::AutoLock locked(lock_);
+    std::lock_guard locked(lock_);
 
     if (fired_)
       return false;
@@ -101,7 +99,7 @@ class SyncWaiter : public WaitableEvent::Waiter {
     fired_ = true;
     signaling_event_ = signaling_event;
 
-    cv_.Broadcast();
+    cv_.notify_all();
 
     // Unlike AsyncWaiter objects, SyncWaiter objects are stack-allocated on
     // the blocking thread's stack.  There is no |delete this;| in Fire.  The
@@ -138,19 +136,19 @@ class SyncWaiter : public WaitableEvent::Waiter {
     fired_ = true;
   }
 
-  butil::Lock* lock() {
+  std::mutex* lock() {
     return &lock_;
   }
 
-  butil::ConditionVariable* cv() {
+  std::condition_variable* cv() {
     return &cv_;
   }
 
  private:
   bool fired_;
   WaitableEvent* signaling_event_;  // The WaitableEvent which woke us
-  butil::Lock lock_;
-  butil::ConditionVariable cv_;
+  std::mutex lock_;
+  std::condition_variable cv_;
 };
 
 void WaitableEvent::Wait() {
@@ -163,7 +161,7 @@ bool WaitableEvent::TimedWait(const TimeDelta& max_time) {
   const TimeTicks end_time(TimeTicks::Now() + max_time);
   const bool finite_time = max_time.ToInternalValue() >= 0;
 
-  kernel_->lock_.Acquire();
+  kernel_->lock_.lock();
   if (kernel_->signaled_) {
     if (!kernel_->manual_reset_) {
       // In this case we were signaled when we had no waiters. Now that
@@ -171,15 +169,15 @@ bool WaitableEvent::TimedWait(const TimeDelta& max_time) {
       kernel_->signaled_ = false;
     }
 
-    kernel_->lock_.Release();
+    kernel_->lock_.unlock();
     return true;
   }
 
   SyncWaiter sw;
-  sw.lock()->Acquire();
+  sw.lock()->lock();
 
   Enqueue(&sw);
-  kernel_->lock_.Release();
+  kernel_->lock_.unlock();
   // We are violating locking order here by holding the SyncWaiter lock but not
   // the WaitableEvent lock. However, this is safe because we don't lock @lock_
   // again before unlocking it.
@@ -196,20 +194,21 @@ bool WaitableEvent::TimedWait(const TimeDelta& max_time) {
       // signal would be lost on an auto-reset WaitableEvent. Thus we call
       // Disable which makes sw::Fire return false.
       sw.Disable();
-      sw.lock()->Release();
+      sw.lock()->unlock();
 
-      kernel_->lock_.Acquire();
+      kernel_->lock_.lock();
       kernel_->Dequeue(&sw, &sw);
-      kernel_->lock_.Release();
+      kernel_->lock_.unlock();
 
       return return_value;
     }
 
+    std::unique_lock lock(*sw.lock());
     if (finite_time) {
       const TimeDelta max_wait(end_time - current_time);
-      sw.cv()->TimedWait(max_wait);
+      sw.cv()->wait_for(lock, std::chrono::microseconds(max_wait.InMicroseconds()));
     } else {
-      sw.cv()->Wait();
+      sw.cv()->wait(lock);
     }
   }
 }
@@ -261,19 +260,19 @@ size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
 
   // At this point, we hold the locks on all the WaitableEvents and we have
   // enqueued our waiter in them all.
-  sw.lock()->Acquire();
+  sw.lock()->lock();
     // Release the WaitableEvent locks in the reverse order
     for (size_t i = 0; i < count; ++i) {
-      waitables[count - (1 + i)].first->kernel_->lock_.Release();
+      waitables[count - (1 + i)].first->kernel_->lock_.unlock();
     }
 
     for (;;) {
       if (sw.fired())
         break;
-
-      sw.cv()->Wait();
+      std::unique_lock lock(*sw.lock());
+      sw.cv()->wait(lock);
     }
-  sw.lock()->Release();
+  sw.lock()->unlock();
 
   // The address of the WaitableEvent which fired is stored in the SyncWaiter.
   WaitableEvent *const signaled_event = sw.signaling_event();
@@ -284,12 +283,12 @@ size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
   // remove our SyncWaiter from the wait-list
   for (size_t i = 0; i < count; ++i) {
     if (raw_waitables[i] != signaled_event) {
-      raw_waitables[i]->kernel_->lock_.Acquire();
+      raw_waitables[i]->kernel_->lock_.lock();
         // There's no possible ABA issue with the address of the SyncWaiter here
         // because it lives on the stack. Thus the tag value is just the pointer
         // value again.
         raw_waitables[i]->kernel_->Dequeue(&sw, &sw);
-      raw_waitables[i]->kernel_->lock_.Release();
+      raw_waitables[i]->kernel_->lock_.unlock();
     } else {
       signaled_index = i;
     }
@@ -315,17 +314,17 @@ size_t WaitableEvent::EnqueueMany
   if (!count)
     return 0;
 
-  waitables[0].first->kernel_->lock_.Acquire();
+  waitables[0].first->kernel_->lock_.lock();
     if (waitables[0].first->kernel_->signaled_) {
       if (!waitables[0].first->kernel_->manual_reset_)
         waitables[0].first->kernel_->signaled_ = false;
-      waitables[0].first->kernel_->lock_.Release();
+      waitables[0].first->kernel_->lock_.unlock();
       return count;
     }
 
     const size_t r = EnqueueMany(waitables + 1, count - 1, waiter);
     if (r) {
-      waitables[0].first->kernel_->lock_.Release();
+      waitables[0].first->kernel_->lock_.unlock();
     } else {
       waitables[0].first->Enqueue(waiter);
     }

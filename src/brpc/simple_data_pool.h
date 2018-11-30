@@ -45,7 +45,7 @@ public:
     Stat stat() const;
     
 private:
-    butil::Mutex _mutex;
+    std::mutex _mutex;
     unsigned _capacity;
     unsigned _size;
     std::atomic<unsigned> _ncreated;
@@ -140,7 +140,7 @@ inline void SimpleDataPool::Return(void* data) {
     if (data == NULL) {
         return;
     }
-    std::unique_lock<butil::Mutex> mu(_mutex);
+    std::unique_lock mu(_mutex);
     if (_capacity == _size) {
         const unsigned new_cap = (_capacity == 0 ? 128 : (_capacity * 3 / 2));
         void** new_pool = (void**)malloc(new_cap * sizeof(void*));

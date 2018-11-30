@@ -6,11 +6,11 @@
 #define BUTIL_THREADING_THREAD_ID_NAME_MANAGER_H_
 
 #include <map>
+#include <mutex>
 #include <string>
 
 #include "butil/base_export.h"
 #include "butil/basictypes.h"
-#include "butil/synchronization/lock.h"
 #include "butil/threading/platform_thread.h"
 
 template <typename T> struct DefaultSingletonTraits;
@@ -49,7 +49,7 @@ class BUTIL_EXPORT ThreadIdNameManager {
 
   // lock_ protects the name_to_interned_name_, thread_id_to_handle_ and
   // thread_handle_to_interned_name_ maps.
-  Lock lock_;
+  std::mutex lock_;
 
   NameToInternedNameMap name_to_interned_name_;
   ThreadIdToHandleMap thread_id_to_handle_;

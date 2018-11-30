@@ -50,7 +50,7 @@ friend class butil::GetLeakySingleton<Extension<T> >;
     Extension();
     ~Extension();
     butil::CaseIgnoredFlatMap<T*> _instance_map;
-    butil::Mutex _map_mutex;
+    std::mutex _map_mutex;
 };
 
 } // namespace brpc

@@ -31,12 +31,12 @@
 namespace brpc {
 
 InputMessenger* g_messenger = NULL;
-static pthread_once_t g_messenger_init = PTHREAD_ONCE_INIT;
+static std::once_flag g_messenger_init;
 static void InitClientSideMessenger() {
     g_messenger = new InputMessenger;
 }
 InputMessenger* get_or_new_client_side_messenger() {
-    pthread_once(&g_messenger_init, InitClientSideMessenger);
+    std::call_once(g_messenger_init, InitClientSideMessenger);
     return g_messenger;
 }
 

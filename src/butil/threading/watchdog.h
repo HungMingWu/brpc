@@ -19,11 +19,11 @@
 #define BUTIL_THREADING_WATCHDOG_H_
 
 #include <string>
+#include <mutex>
+#include <condition_variable>
 
 #include "butil/base_export.h"
 #include "butil/compiler_specific.h"
-#include "butil/synchronization/condition_variable.h"
-#include "butil/synchronization/lock.h"
 #include "butil/threading/platform_thread.h"
 #include "butil/time/time.h"
 
@@ -76,8 +76,8 @@ class BUTIL_EXPORT Watchdog {
 
   bool enabled_;
 
-  Lock lock_;  // Mutex for state_.
-  ConditionVariable condition_variable_;
+  std::mutex lock_;  // Mutex for state_.
+  std::condition_variable condition_variable_;
   State state_;
   const TimeDelta duration_;  // How long after start_time_ do we alarm?
   const std::string thread_watched_name_;

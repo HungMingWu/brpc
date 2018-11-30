@@ -206,25 +206,23 @@ class DoublyBufferedData<T, TLS>::Wrapper
 friend class DoublyBufferedData;
 public:
     explicit Wrapper(DoublyBufferedData* c) : _control(c) {
-        pthread_mutex_init(&_mutex, NULL);
     }
     
     ~Wrapper() {
         if (_control != NULL) {
             _control->RemoveWrapper(this);
         }
-        pthread_mutex_destroy(&_mutex);
     }
 
     // _mutex will be locked by the calling pthread and DoublyBufferedData.
     // Most of the time, no modifications are done, so the mutex is
     // uncontended and fast.
     inline void BeginRead() {
-        pthread_mutex_lock(&_mutex);
+        _mutex.lock();
     }
 
     inline void EndRead() {
-        pthread_mutex_unlock(&_mutex);
+        _mutex.unlock();
     }
 
     inline void WaitReadDone() {
@@ -233,7 +231,7 @@ public:
     
 private:
     DoublyBufferedData* _control;
-    pthread_mutex_t _mutex;
+    std::mutex _mutex;
 };
 
 // Called when thread initializes thread-local wrapper.

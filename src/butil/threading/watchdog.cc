@@ -22,7 +22,7 @@ namespace {
 
 struct StaticData {
   // Lock for access of static data...
-  Lock lock;
+  std::mutex lock;
 
   // When did we last alarm and get stuck (for a while) in a debugger?
   TimeTicks last_debugged_alarm_time;
@@ -40,8 +40,6 @@ Watchdog::Watchdog(const TimeDelta& duration,
                    const std::string& thread_watched_name,
                    bool enabled)
   : enabled_(enabled),
-    lock_(),
-    condition_variable_(&lock_),
     state_(DISARMED),
     duration_(duration),
     thread_watched_name_(thread_watched_name),
@@ -60,7 +58,7 @@ Watchdog::~Watchdog() {
     return;
   if (!IsJoinable())
     Cleanup();
-  condition_variable_.Signal();
+  condition_variable_.notify_one();
   PlatformThread::Join(handle_);
 }
 
@@ -68,16 +66,16 @@ void Watchdog::Cleanup() {
   if (!enabled_)
     return;
   {
-    AutoLock lock(lock_);
+    std::lock_guard lock(lock_);
     state_ = SHUTDOWN;
   }
-  condition_variable_.Signal();
+  condition_variable_.notify_one();
 }
 
 bool Watchdog::IsJoinable() {
   if (!enabled_)
     return true;
-  AutoLock lock(lock_);
+  std::lock_guard lock(lock_);
   return (state_ == JOINABLE);
 }
 
@@ -92,18 +90,18 @@ void Watchdog::ArmSomeTimeDeltaAgo(const TimeDelta& time_delta) {
 // Start clock for watchdog.
 void Watchdog::ArmAtStartTime(const TimeTicks start_time) {
   {
-    AutoLock lock(lock_);
+    std::lock_guard lock(lock_);
     start_time_ = start_time;
     state_ = ARMED;
   }
   // Force watchdog to wake up, and go to sleep with the timer ticking with the
   // proper duration.
-  condition_variable_.Signal();
+  condition_variable_.notify_one();
 }
 
 // Disable watchdog so that it won't do anything when time expires.
 void Watchdog::Disarm() {
-  AutoLock lock(lock_);
+  std::lock_guard lock(lock_);
   state_ = DISARMED;
   // We don't need to signal, as the watchdog will eventually wake up, and it
   // will check its state and time, and act accordingly.
@@ -121,9 +119,9 @@ void Watchdog::ThreadDelegate::ThreadMain() {
   TimeDelta remaining_duration;
   StaticData* static_data = g_static_data.Pointer();
   while (1) {
-    AutoLock lock(watchdog_->lock_);
+    std::unique_lock lock(watchdog_->lock_);
     while (DISARMED == watchdog_->state_)
-      watchdog_->condition_variable_.Wait();
+      watchdog_->condition_variable_.wait(lock);
     if (SHUTDOWN == watchdog_->state_) {
       watchdog_->state_ = JOINABLE;
       return;
@@ -133,13 +131,13 @@ void Watchdog::ThreadDelegate::ThreadMain() {
         (TimeTicks::Now() - watchdog_->start_time_);
     if (remaining_duration.InMilliseconds() > 0) {
       // Spurios wake?  Timer drifts?  Go back to sleep for remaining time.
-      watchdog_->condition_variable_.TimedWait(remaining_duration);
+      watchdog_->condition_variable_.wait_for(lock, std::chrono::milliseconds(remaining_duration.InMilliseconds()));
       continue;
     }
     // We overslept, so this seems like a real alarm.
     // Watch out for a user that stopped the debugger on a different alarm!
     {
-      AutoLock static_lock(static_data->lock);
+      std::lock_guard static_lock(static_data->lock);
       if (static_data->last_debugged_alarm_time > watchdog_->start_time_) {
         // False alarm: we started our clock before the debugger break (last
         // alarm time).
@@ -153,14 +151,14 @@ void Watchdog::ThreadDelegate::ThreadMain() {
     watchdog_->state_ = DISARMED;  // Only alarm at most once.
     TimeTicks last_alarm_time = TimeTicks::Now();
     {
-      AutoUnlock lock(watchdog_->lock_);
+      std::lock_guard lock(watchdog_->lock_);
       watchdog_->Alarm();  // Set a break point here to debug on alarms.
     }
     TimeDelta last_alarm_delay = TimeTicks::Now() - last_alarm_time;
     if (last_alarm_delay <= TimeDelta::FromMilliseconds(2))
       continue;
     // Ignore race of two alarms/breaks going off at roughly the same time.
-    AutoLock static_lock(static_data->lock);
+    std::lock_guard static_lock(static_data->lock);
     // This was a real debugger break.
     static_data->last_debugged_alarm_time = last_alarm_time;
     static_data->last_debugged_alarm_delay = last_alarm_delay;
@@ -176,7 +174,7 @@ void Watchdog::ThreadDelegate::SetThreadName() const {
 // static
 void Watchdog::ResetStaticData() {
   StaticData* static_data = g_static_data.Pointer();
-  AutoLock lock(static_data->lock);
+  std::lock_guard lock(static_data->lock);
   static_data->last_debugged_alarm_time = TimeTicks();
   static_data->last_debugged_alarm_delay = TimeDelta();
 }

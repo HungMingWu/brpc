@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <mutex>
 #include "butil/fast_rand.h"
 #include "brpc/log.h"
 #include "brpc/channel.h"
@@ -41,7 +42,7 @@ static const int32_t TRACKME_MIN_INTERVAL = 30;
 static const int32_t TRACKME_MAX_INTERVAL = 600;
 static int32_t s_trackme_interval = TRACKME_MIN_INTERVAL;
 // Protecting global vars on trackme
-static pthread_mutex_t g_trackme_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex g_trackme_mutex;
 // For contacting with trackme_server.
 static Channel* g_trackme_chan = NULL;
 // Any server address in this process.
@@ -114,7 +115,7 @@ int ReadJPaasHostPort(int container_port) {
 
 // Called in server.cpp
 void SetTrackMeAddress(butil::EndPoint pt) {
-    BAIDU_SCOPED_LOCK(g_trackme_mutex);
+    std::lock_guard guard(g_trackme_mutex);
     if (g_trackme_addr == NULL) {
         // JPAAS has NAT capabilities, read its log to figure out the open port
         // accessible from outside.
@@ -137,7 +138,7 @@ static void HandleTrackMeResponse(Controller* cntl, TrackMeResponse* res) {
         cur_info.error_text = res->error_text();
         bool already_reported = false;
         {
-            BAIDU_SCOPED_LOCK(g_trackme_mutex);
+            std::lock_guard guard(g_trackme_mutex);
             if (g_bug_info != NULL && *g_bug_info == cur_info) {
                 // we've shown the bug.
                 already_reported = true;
@@ -184,7 +185,7 @@ static void HandleTrackMeResponse(Controller* cntl, TrackMeResponse* res) {
     delete res;
 }
 
-static void TrackMeNow(std::unique_lock<pthread_mutex_t>& mu) {
+static void TrackMeNow(std::unique_lock<std::mutex>& mu) {
     if (g_trackme_addr == NULL) {
         return;
     }
@@ -224,7 +225,7 @@ void TrackMe() {
         return;
     }
     int64_t now = butil::gettimeofday_us();
-    std::unique_lock<pthread_mutex_t> mu(g_trackme_mutex);
+    std::unique_lock mu(g_trackme_mutex);
     if (g_trackme_last_time == 0) {
         // Delay the first ping randomly within s_trackme_interval. This 
         // protects trackme_server from ping storms.

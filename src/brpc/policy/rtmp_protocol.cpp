@@ -106,7 +106,7 @@ static const size_t MAGIC_NUMBER_SIZE = 4; /* magic number */
 
 // The random data for handshaking
 static butil::IOBuf* s_rtmp_handshake_server_random = NULL;
-static pthread_once_t s_sr_once = PTHREAD_ONCE_INIT;
+static std::once_flag s_sr_once;
 static void InitRtmpHandshakeServerRandom() {
     char buf[1528];
     for (int i = 0; i < 191; ++i) {
@@ -116,12 +116,12 @@ static void InitRtmpHandshakeServerRandom() {
     s_rtmp_handshake_server_random->append(buf, sizeof(buf));
 }
 static const butil::IOBuf& GetRtmpHandshakeServerRandom() {
-    pthread_once(&s_sr_once, InitRtmpHandshakeServerRandom);
+    std::call_once(s_sr_once, InitRtmpHandshakeServerRandom);
     return *s_rtmp_handshake_server_random;
 }
 
 static butil::IOBuf* s_rtmp_handshake_client_random = NULL;
-static pthread_once_t s_cr_once = PTHREAD_ONCE_INIT;
+static std::once_flag s_cr_once;
 static void InitRtmpHandshakeClientRandom() {
     char buf[1528];
     for (int i = 0; i < 191; ++i) {
@@ -131,7 +131,7 @@ static void InitRtmpHandshakeClientRandom() {
     s_rtmp_handshake_client_random->append(buf, sizeof(buf));
 }
 static const butil::IOBuf& GetRtmpHandshakeClientRandom() {
-    pthread_once(&s_cr_once, InitRtmpHandshakeClientRandom);
+    std::call_once(s_cr_once, InitRtmpHandshakeClientRandom);
     return *s_rtmp_handshake_client_random;
 }
 
@@ -932,7 +932,7 @@ bool RtmpContext::AddClientStream(RtmpStreamBase* stream) {
     }
     uint32_t chunk_stream_id = 0;
     {
-        std::unique_lock<butil::Mutex> mu(_stream_mutex);
+        std::unique_lock mu(_stream_mutex);
         MessageStreamInfo& info = _mstream_map[stream_id];
         if (info.stream != NULL) {
             mu.unlock();
@@ -949,7 +949,7 @@ bool RtmpContext::AddClientStream(RtmpStreamBase* stream) {
 bool RtmpContext::AddServerStream(RtmpStreamBase* stream) {
     uint32_t stream_id = 0;
     {
-        std::unique_lock<butil::Mutex> mu(_stream_mutex);
+        std::unique_lock mu(_stream_mutex);
         if (!AllocateMessageStreamId(&stream_id)) {
             return false;
         }
@@ -980,7 +980,7 @@ bool RtmpContext::RemoveMessageStream(RtmpStreamBase* stream) {
     // for deref the stream outside _stream_mutex.
     butil::intrusive_ptr<RtmpStreamBase> deref_ptr; 
     {
-        std::unique_lock<butil::Mutex> mu(_stream_mutex);
+        std::unique_lock mu(_stream_mutex);
         MessageStreamInfo* info = _mstream_map.seek(stream_id);
         if (info == NULL) {
             mu.unlock();
@@ -1396,14 +1396,14 @@ RtmpChunkStream::WriteParams::WriteParams()
 }
 
 MethodStatus* g_client_msg_status = NULL;
-static pthread_once_t g_client_msg_status_once = PTHREAD_ONCE_INIT;
+static std::once_flag g_client_msg_status_once;
 static void InitClientMessageStatus() {
     g_client_msg_status = new MethodStatus;
     g_client_msg_status->Expose("rtmp_client_in");
 }
 
 MethodStatus* g_server_msg_status = NULL;
-static pthread_once_t g_server_msg_status_once = PTHREAD_ONCE_INIT;
+static std::once_flag g_server_msg_status_once;
 static void InitServerMessageStatus() {
     g_server_msg_status = new MethodStatus;
     g_server_msg_status->Expose("rtmp_server_in");
@@ -1616,10 +1616,10 @@ ParseResult RtmpChunkStream::Feed(const RtmpBasicHeader& bh,
     if (_r.left_message_length == 0) {
         MethodStatus* st = NULL;
         if (ctx->service() != NULL) {
-            pthread_once(&g_server_msg_status_once, InitServerMessageStatus);
+            std::call_once(g_server_msg_status_once, InitServerMessageStatus);
             st = g_server_msg_status;
         } else {
-            pthread_once(&g_client_msg_status_once, InitClientMessageStatus);
+            std::call_once(g_client_msg_status_once, InitClientMessageStatus);
             st = g_client_msg_status;
         }
         if (st) {
@@ -1761,7 +1761,7 @@ static const RtmpChunkStream::MessageHandler s_msg_handlers[] = {
 
 typedef butil::FlatMap<std::string, RtmpChunkStream::CommandHandler> CommandHandlerMap;
 static CommandHandlerMap* s_cmd_handlers = NULL;
-static pthread_once_t s_cmd_handlers_init_once = PTHREAD_ONCE_INIT;
+static std::once_flag s_cmd_handlers_init_once;
 static void InitCommandHandlers() {
     // Dispatch commands based on "Command Name".
     s_cmd_handlers = new CommandHandlerMap;
@@ -2272,7 +2272,7 @@ bool RtmpChunkStream::OnCommandMessageAMF0(
     RPC_VLOG << socket->remote_side() << "[" << mh.stream_id
              << "] Command{timestamp=" << mh.timestamp
              << " name=" << command_name << '}';
-    pthread_once(&s_cmd_handlers_init_once, InitCommandHandlers);
+    std::call_once(s_cmd_handlers_init_once, InitCommandHandlers);
     RtmpChunkStream::CommandHandler* phandler =
         s_cmd_handlers->seek(command_name);
     if (phandler == NULL) {

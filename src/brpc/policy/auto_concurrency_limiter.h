@@ -71,7 +71,7 @@ private:
   
     // modified per sample.
     std::atomic<int64_t> BAIDU_CACHELINE_ALIGNMENT _last_sampling_time_us;
-    butil::Mutex _sw_mutex;
+    std::mutex _sw_mutex;
     SampleWindow _sw;
 
     // modified per request.

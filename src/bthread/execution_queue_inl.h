@@ -79,7 +79,7 @@ struct BAIDU_CACHELINE_ALIGNMENT TaskNode {
         }
         return false;
     }
-    butil::Mutex mutex;  // to guard version and status
+    std::mutex mutex;  // to guard version and status
     int64_t version;
     uint8_t status;
     bool stop_task;
@@ -99,7 +99,7 @@ struct BAIDU_CACHELINE_ALIGNMENT TaskNode {
             CHECK(iterated);
         }
         q = NULL;
-        std::unique_lock<butil::Mutex> lck(mutex);
+        std::unique_lock lck(mutex);
         ++version;
         const int saved_status = status;
         status = UNEXECUTED;

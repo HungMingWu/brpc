@@ -19,10 +19,10 @@
 #define  BVAR_STATUS_H
 
 #include <atomic>
+#include <mutex>
 #include <string>                       // std::string
 #include "butil/type_traits.h"
 #include "butil/string_printf.h"
-#include "butil/synchronization/lock.h"
 #include "bvar/detail/is_atomical.h"
 #include "bvar/variable.h"
 
@@ -59,19 +59,19 @@ public:
     
 #ifdef BAIDU_INTERNAL
     void get_value(boost::any* value) const {
-        butil::AutoLock guard(_lock);
+        std::mutex guard(_lock);
         *value = _value;
     }
 #endif
 
     T get_value() const {
-        butil::AutoLock guard(_lock);
+        std::lock_guard guard(_lock);
         const T res = _value;
         return res;
     }
 
     void set_value(const T& value) {
-        butil::AutoLock guard(_lock);
+        std::lock_guard guard(_lock);
         _value = value;
     }
 
@@ -79,7 +79,7 @@ private:
     T _value;
     // We use lock rather than std::atomic for generic values because
     // std::atomic requires the type to be memcpy-able (POD basically)
-    mutable butil::Lock _lock;
+    mutable std::mutex _lock;
 };
 
 template <typename T>
@@ -156,7 +156,7 @@ public:
     }
 
     std::string get_value() const {
-        butil::AutoLock guard(_lock);
+        std::lock_guard guard(_lock);
         return _value;
     }
 
@@ -170,20 +170,20 @@ public:
         va_list ap;
         va_start(ap, fmt);
         {
-            butil::AutoLock guard(_lock);
+            std::lock_guard guard(_lock);
             butil::string_vprintf(&_value, fmt, ap);
         }
         va_end(ap);
     }
 
     void set_value(const std::string& s) {
-        butil::AutoLock guard(_lock);
+        std::lock_guard guard(_lock);
         _value = s;
     }
 
 private:
     std::string _value;
-    mutable butil::Lock _lock;
+    mutable std::mutex _lock;
 };
 
 }  // namespace bvar

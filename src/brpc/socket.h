@@ -771,7 +771,7 @@ private:
 
     std::atomic<SocketId> _agent_socket_id;
 
-    butil::Mutex _pipeline_mutex;
+    std::mutex _pipeline_mutex;
     std::deque<PipelinedInfo>* _pipeline_q;
 
     // For storing call-id of in-progress RPC.
@@ -789,7 +789,7 @@ private:
     // Storing data that are not flushed into `fd' yet.
     std::atomic<WriteRequest*> _write_head;
 
-    butil::Mutex _stream_mutex;
+    std::mutex _stream_mutex;
     std::set<StreamId> *_stream_set;
 };
 

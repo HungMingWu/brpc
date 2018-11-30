@@ -17,7 +17,6 @@
 #include <google/protobuf/descriptor.h>
 #include "butil/sys_byteorder.h"
 #include "butil/logging.h"
-#include "butil/find_cstr.h"
 #include "brpc/log.h"
 #include "brpc/amf.h"
 
@@ -130,8 +129,7 @@ void AMFField::SlowerClear() {
 }
 
 const AMFField* AMFObject::Find(const char* name) const {
-    std::map<std::string, AMFField>::const_iterator it =
-        butil::find_cstr(_fields, name);
+    auto it = _fields.find(name);
     if (it != _fields.end()) {
         return &it->second;
     }

@@ -1504,7 +1504,7 @@ void RtmpStreamBase::OnStop() {
 }
 
 bool RtmpStreamBase::BeginProcessingMessage(const char* fun_name) {
-    std::unique_lock<butil::Mutex> mu(_call_mutex);
+    std::unique_lock mu(_call_mutex);
     if (_stopped) {
         mu.unlock();
         LOG(ERROR) << fun_name << " is called after OnStop()";
@@ -1524,7 +1524,7 @@ bool RtmpStreamBase::BeginProcessingMessage(const char* fun_name) {
 }
 
 void RtmpStreamBase::EndProcessingMessage() {
-    std::unique_lock<butil::Mutex> mu(_call_mutex);
+    std::unique_lock mu(_call_mutex);
     _processing_msg = false;
     if (_stopped) {
         mu.unlock();
@@ -1576,7 +1576,7 @@ void RtmpStreamBase::CallOnVideoMessage(RtmpVideoMessage* msg) {
 
 void RtmpStreamBase::CallOnStop() {
     {
-        std::unique_lock<butil::Mutex> mu(_call_mutex);
+        std::unique_lock mu(_call_mutex);
         if (_stopped) {
             mu.unlock();
             LOG(ERROR) << "OnStop() was called more than once";
@@ -1619,7 +1619,7 @@ void RtmpClientStream::Destroy() {
     CallId create_stream_rpc_id = INVALID_BTHREAD_ID;
     butil::intrusive_ptr<RtmpClientStream> self_ref;
     
-    std::unique_lock<butil::Mutex> mu(_state_mutex);
+    std::unique_lock mu(_state_mutex);
     switch (_state) {
     case STATE_UNINITIALIZED:
         _state = STATE_DESTROYING;
@@ -1654,7 +1654,7 @@ void RtmpClientStream::Destroy() {
 
 void RtmpClientStream::SignalError() {
     bthread_id_t onfail_id = INVALID_BTHREAD_ID;
-    std::unique_lock<butil::Mutex> mu(_state_mutex);
+    std::unique_lock mu(_state_mutex);
     switch (_state) {
     case STATE_UNINITIALIZED:
         _state = STATE_ERROR;
@@ -1681,7 +1681,7 @@ void RtmpClientStream::SignalError() {
 StreamUserData* RtmpClientStream::OnCreatingStream(
     SocketUniquePtr* inout, Controller* cntl) {
     {
-        std::unique_lock<butil::Mutex> mu(_state_mutex);
+        std::unique_lock mu(_state_mutex);
         if (_state == STATE_ERROR || _state == STATE_DESTROYING) {
             cntl->SetFailed(EINVAL, "Fail to replace socket for stream, _state is error or destroying");
             return NULL;
@@ -1727,7 +1727,7 @@ int RtmpClientStream::RunOnFailed(bthread_id_t id, void* data, int) {
 
 void RtmpClientStream::OnFailedToCreateStream() {
     {
-        std::unique_lock<butil::Mutex> mu(_state_mutex);
+        std::unique_lock mu(_state_mutex);
         switch (_state) {
         case STATE_CREATING:
             _state = STATE_ERROR;
@@ -1799,7 +1799,7 @@ void RtmpClientStream::DestroyStreamCreator(Controller* cntl) {
     int rc = 0;
     bthread_id_t onfail_id = INVALID_BTHREAD_ID;
     {
-        std::unique_lock<butil::Mutex> mu(_state_mutex);
+        std::unique_lock mu(_state_mutex);
         switch (_state) {
         case STATE_CREATING:
             CHECK(_rtmpsock);
@@ -2126,7 +2126,7 @@ void RtmpClientStream::Init(const RtmpClient* client,
         return OnStopInternal();
     }
     {
-        std::unique_lock<butil::Mutex> mu(_state_mutex);
+        std::unique_lock mu(_state_mutex);
         if (_state == STATE_DESTROYING || _state == STATE_ERROR) {
             // already Destroy()-ed or SignalError()-ed
             LOG(WARNING) << "RtmpClientStream=" << this << " was already "
@@ -2153,7 +2153,7 @@ void RtmpClientStream::Init(const RtmpClient* client,
     google::protobuf::Message* res = (google::protobuf::Message*)this;
     const CallId call_id = done->cntl.call_id();
     {
-        std::unique_lock<butil::Mutex> mu(_state_mutex);
+        std::unique_lock mu(_state_mutex);
         switch (_state) {
         case STATE_UNINITIALIZED:
             _state = STATE_CREATING;

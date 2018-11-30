@@ -378,14 +378,14 @@ private:
     RtmpService* _service;
     
     // Mapping message_stream_id to message streams.
-    butil::Mutex _stream_mutex;
+    std::mutex _stream_mutex;
     struct MessageStreamInfo {
         butil::intrusive_ptr<RtmpStreamBase> stream;
     };
     butil::FlatMap<uint32_t, MessageStreamInfo> _mstream_map;
 
     // Mapping transaction id to handlers.
-    butil::Mutex _trans_mutex;
+    std::mutex _trans_mutex;
     uint32_t _trans_id_allocator;
     butil::FlatMap<uint32_t, RtmpTransactionHandler*> _trans_map;
 

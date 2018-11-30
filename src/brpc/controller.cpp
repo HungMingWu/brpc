@@ -17,6 +17,7 @@
 //          Zhangyi Chen(chenzhangyi01@baidu.com)
 
 #include <signal.h>
+#include <mutex>
 #include <openssl/md5.h>  
 #include <google/protobuf/descriptor.h>
 #include <gflags/gflags.h>
@@ -114,14 +115,14 @@ DECLARE_bool(usercode_in_pthread);
 static const int MAX_RETRY_COUNT = 1000;
 static bvar::Adder<int64_t>* g_ncontroller = NULL;
 
-static pthread_once_t s_create_vars_once = PTHREAD_ONCE_INIT;
+static std::once_flag s_create_vars_once;
 
 static void CreateVars() {
     g_ncontroller = new bvar::Adder<int64_t>("rpc_controller_count");
 }
 
 Controller::Controller() {
-    CHECK_EQ(0, pthread_once(&s_create_vars_once, CreateVars));
+    std::call_once(s_create_vars_once, CreateVars);
     *g_ncontroller << 1;
     ResetPods();
 }
@@ -141,7 +142,7 @@ public:
 };
 
 static IgnoreAllRead* s_ignore_all_read = NULL;
-static pthread_once_t s_ignore_all_read_once = PTHREAD_ONCE_INIT;
+static std::once_flag s_ignore_all_read_once;
 static void CreateIgnoreAllRead() { s_ignore_all_read = new IgnoreAllRead; }
 
 // If resource needs to be destroyed or memory needs to be deleted (both
@@ -189,7 +190,7 @@ void Controller::ResetNonPods() {
             // is probably being buffered and a full buffer may block parse
             // handler of the protocol. We need to set a reader to consume
             // the buffer.
-            pthread_once(&s_ignore_all_read_once, CreateIgnoreAllRead);
+            std::call_once(s_ignore_all_read_once, CreateIgnoreAllRead);
             _rpa->ReadProgressiveAttachmentBy(s_ignore_all_read);
         }
         _rpa.reset(NULL);
@@ -1438,7 +1439,7 @@ static void quit_handler(int signo) {
     }
 }
 
-static pthread_once_t register_quit_signal_once = PTHREAD_ONCE_INIT;
+static std::once_flag register_quit_signal_once;
 
 static void RegisterQuitSignalOrDie() {
     // Not thread-safe.
@@ -1470,7 +1471,7 @@ static void RegisterQuitSignalOrDie() {
 }
 
 bool IsAskedToQuit() {
-    pthread_once(&register_quit_signal_once, RegisterQuitSignalOrDie);
+    std::call_once(register_quit_signal_once, RegisterQuitSignalOrDie);
     return s_signal_quit;
 }
 

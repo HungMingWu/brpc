@@ -469,7 +469,7 @@ void LocalityAwareLoadBalancer::Destroy() {
 }
 
 void LocalityAwareLoadBalancer::Weight::Describe(std::ostream& os, int64_t now) {
-    std::unique_lock<butil::Mutex> mu(_mutex);
+    std::unique_lock mu(_mutex);
     int64_t begin_time_sum = _begin_time_sum;
     int begin_time_count = _begin_time_count;
     int64_t weight = _weight;

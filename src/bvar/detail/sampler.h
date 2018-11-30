@@ -18,9 +18,9 @@
 #ifndef  BVAR_DETAIL_SAMPLER_H
 #define  BVAR_DETAIL_SAMPLER_H
 
+#include <mutex>
 #include <vector>
 #include "butil/containers/linked_list.h"// LinkNode
-#include "butil/scoped_lock.h"           // BAIDU_SCOPED_LOCK
 #include "butil/logging.h"               // LOG()
 #include "butil/containers/bounded_queue.h"// BoundedQueue
 #include "butil/type_traits.h"           // is_same
@@ -62,7 +62,7 @@ protected:
 friend class SamplerCollector;
     bool _used;
     // Sync destroy() and take_sample().
-    butil::Mutex _mutex;
+    std::mutex _mutex;
 };
 
 // Representing a non-existing operator so that we can test
@@ -143,7 +143,7 @@ public:
             LOG(FATAL) << "Invalid window_size=" << window_size;
             return false;
         }
-        BAIDU_SCOPED_LOCK(_mutex);
+        std::lock_guard guard(_mutex);
         if (_q.size() <= 1UL) {
             // We need more samples to get reasonable result.
             return false;
@@ -179,7 +179,7 @@ public:
             LOG(ERROR) << "Invalid window_size=" << window_size;
             return -1;
         }
-        BAIDU_SCOPED_LOCK(_mutex);
+        std::lock_guard guard(_mutex);
         if (window_size > _window_size) {
             _window_size = window_size;
         }
@@ -191,7 +191,7 @@ public:
             LOG(FATAL) << "Invalid window_size=" << window_size;
             return;
         }
-        BAIDU_SCOPED_LOCK(_mutex);
+        std::lock_guard guard(_mutex);
         if (_q.size() <= 1) {
             // We need more samples to get reasonable result.
             return;

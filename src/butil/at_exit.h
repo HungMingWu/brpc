@@ -6,10 +6,10 @@
 #define BUTIL_AT_EXIT_H_
 
 #include <stack>
+#include <mutex>
 
 #include "butil/base_export.h"
 #include "butil/basictypes.h"
-#include "butil/synchronization/lock.h"
 
 namespace butil {
 
@@ -57,7 +57,7 @@ class BUTIL_EXPORT AtExitManager {
     AtExitCallbackType func;
     void* param;
   };
-  butil::Lock lock_;
+  std::mutex lock_;
   std::stack<Callback> stack_;
   AtExitManager* next_manager_;  // Stack of managers to allow shadowing.
 

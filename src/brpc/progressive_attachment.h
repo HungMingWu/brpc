@@ -64,7 +64,7 @@ protected:
     bool _before_http_1_1;
     bool _pause_from_mark_rpc_as_done;
     std::atomic<int> _rpc_state;
-    butil::Mutex _mutex;
+    std::mutex _mutex;
     SocketUniquePtr _httpsock;
     butil::IOBuf _saved_buf;
     bthread_id_t _notify_id;

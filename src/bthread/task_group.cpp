@@ -683,7 +683,7 @@ void TaskGroup::ready_to_run_remote(bthread_t tid, bool nosignal) {
     }
 }
 
-void TaskGroup::flush_nosignal_tasks_remote_locked(butil::Mutex& locked_mutex) {
+void TaskGroup::flush_nosignal_tasks_remote_locked(std::mutex& locked_mutex) {
     const int val = _remote_num_nosignal;
     if (!val) {
         locked_mutex.unlock();

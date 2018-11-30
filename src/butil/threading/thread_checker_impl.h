@@ -5,8 +5,8 @@
 #ifndef BUTIL_THREADING_THREAD_CHECKER_IMPL_H_
 #define BUTIL_THREADING_THREAD_CHECKER_IMPL_H_
 
+#include <mutex>
 #include "butil/base_export.h"
-#include "butil/synchronization/lock.h"
 #include "butil/threading/platform_thread.h"
 
 namespace butil {
@@ -32,7 +32,7 @@ class BUTIL_EXPORT ThreadCheckerImpl {
  private:
   void EnsureThreadIdAssigned() const;
 
-  mutable butil::Lock lock_;
+  mutable std::mutex lock_;
   // This is mutable so that CalledOnValidThread can set it.
   // It's guarded by |lock_|.
   mutable PlatformThreadRef valid_thread_id_;

@@ -15,17 +15,17 @@ ThreadCheckerImpl::~ThreadCheckerImpl() {}
 
 bool ThreadCheckerImpl::CalledOnValidThread() const {
   EnsureThreadIdAssigned();
-  AutoLock auto_lock(lock_);
+  std::lock_guard auto_lock(lock_);
   return valid_thread_id_ == PlatformThread::CurrentRef();
 }
 
 void ThreadCheckerImpl::DetachFromThread() {
-  AutoLock auto_lock(lock_);
+  std::lock_guard auto_lock(lock_);
   valid_thread_id_ = PlatformThreadRef();
 }
 
 void ThreadCheckerImpl::EnsureThreadIdAssigned() const {
-  AutoLock auto_lock(lock_);
+  std::lock_guard auto_lock(lock_);
   if (valid_thread_id_.is_null()) {
     valid_thread_id_ = PlatformThread::CurrentRef();
   }

@@ -4,15 +4,15 @@
 //
 // The purpose of this file is to supply the macro definintions necessary
 // to make third_party/dmg_fp/dtoa.cc threadsafe.
+#include <mutex>
 #include "butil/lazy_instance.h"
 #include "butil/logging.h"
-#include "butil/synchronization/lock.h"
 
 // We need two locks because they're sometimes grabbed at the same time.
 // A single lock would lead to an attempted recursive grab.
-static butil::LazyInstance<butil::Lock>::Leaky
+static butil::LazyInstance<std::mutex>::Leaky
     dtoa_lock_0 = LAZY_INSTANCE_INITIALIZER;
-static butil::LazyInstance<butil::Lock>::Leaky
+static butil::LazyInstance<std::mutex>::Leaky
     dtoa_lock_1 = LAZY_INSTANCE_INITIALIZER;
 
 /*
@@ -33,14 +33,14 @@ static butil::LazyInstance<butil::Lock>::Leaky
 
 inline static void ACQUIRE_DTOA_LOCK(size_t n) {
   DCHECK(n < 2);
-  butil::Lock* lock = n == 0 ? dtoa_lock_0.Pointer() : dtoa_lock_1.Pointer();
-  lock->Acquire();
+  std::mutex* lock = n == 0 ? dtoa_lock_0.Pointer() : dtoa_lock_1.Pointer();
+  lock->lock();
 }
 
 inline static void FREE_DTOA_LOCK(size_t n) {
   DCHECK(n < 2);
-  butil::Lock* lock = n == 0 ? dtoa_lock_0.Pointer() : dtoa_lock_1.Pointer();
-  lock->Release();
+  std::mutex* lock = n == 0 ? dtoa_lock_0.Pointer() : dtoa_lock_1.Pointer();
+  lock->unlock();
 }
 
 #include "butil/third_party/dmg_fp/dtoa.cc"

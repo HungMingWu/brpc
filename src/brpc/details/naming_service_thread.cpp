@@ -55,7 +55,7 @@ inline bool operator==(const NSKey& k1, const NSKey& k2) {
 typedef butil::FlatMap<NSKey, NamingServiceThread*, NSKeyHasher> NamingServiceMap;
 // Construct on demand to make the code work before main()
 static NamingServiceMap* g_nsthread_map = NULL;
-static pthread_mutex_t g_nsthread_map_mutex = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex g_nsthread_map_mutex;
 
 NamingServiceThread::Actions::Actions(NamingServiceThread* owner)
     : _owner(owner)
@@ -231,7 +231,7 @@ NamingServiceThread::~NamingServiceThread() {
     // Remove from g_nsthread_map first
     if (!_protocol.empty()) {
         const NSKey key(_protocol, _service_name, _options.channel_signature);
-        std::unique_lock<pthread_mutex_t> mu(g_nsthread_map_mutex);
+        std::unique_lock mu(g_nsthread_map_mutex);
         if (g_nsthread_map != NULL) {
             NamingServiceThread** ptr = g_nsthread_map->seek(key);
             if (ptr != NULL && *ptr == this) {
@@ -425,7 +425,7 @@ int GetNamingServiceThread(
     bool new_thread = false;
     butil::intrusive_ptr<NamingServiceThread> nsthread;
     {
-        std::unique_lock<pthread_mutex_t> mu(g_nsthread_map_mutex);
+        std::unique_lock mu(g_nsthread_map_mutex);
         if (g_nsthread_map == NULL) {
             g_nsthread_map = new (std::nothrow) NamingServiceMap;
             if (NULL == g_nsthread_map) {
@@ -468,7 +468,7 @@ int GetNamingServiceThread(
     if (new_thread) {
         if (nsthread->Start(source_ns->New(), key.protocol, key.service_name, options) != 0) {
             LOG(ERROR) << "Fail to start NamingServiceThread";
-            std::unique_lock<pthread_mutex_t> mu(g_nsthread_map_mutex);
+            std::unique_lock mu(g_nsthread_map_mutex);
             g_nsthread_map->erase(key);
             return -1;
         }

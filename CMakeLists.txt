@@ -267,7 +267,6 @@ set(BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/src/butil/strings/utf_string_conversion_utils.cc
     ${PROJECT_SOURCE_DIR}/src/butil/strings/utf_string_conversions.cc
     ${PROJECT_SOURCE_DIR}/src/butil/synchronization/cancellation_flag.cc
-    ${PROJECT_SOURCE_DIR}/src/butil/synchronization/condition_variable_posix.cc
     ${PROJECT_SOURCE_DIR}/src/butil/synchronization/waitable_event_posix.cc
     ${PROJECT_SOURCE_DIR}/src/butil/threading/non_thread_safe_impl.cc
     ${PROJECT_SOURCE_DIR}/src/butil/threading/platform_thread_posix.cc
@@ -290,7 +289,6 @@ set(BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/src/butil/logging.cc
     ${PROJECT_SOURCE_DIR}/src/butil/class_name.cpp
     ${PROJECT_SOURCE_DIR}/src/butil/errno.cpp
-    ${PROJECT_SOURCE_DIR}/src/butil/find_cstr.cpp
     ${PROJECT_SOURCE_DIR}/src/butil/status.cpp
     ${PROJECT_SOURCE_DIR}/src/butil/string_printf.cpp
     ${PROJECT_SOURCE_DIR}/src/butil/thread_local.cpp

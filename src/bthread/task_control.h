@@ -90,14 +90,14 @@ private:
 
     std::atomic<size_t> _ngroup;
     TaskGroup** _groups;
-    butil::Mutex _modify_group_mutex;
+    std::mutex _modify_group_mutex;
 
     bool _stop;
     std::atomic<int> _concurrency;
     std::vector<pthread_t> _workers;
 
     bvar::Adder<int64_t> _nworkers;
-    butil::Mutex _pending_time_mutex;
+    std::mutex _pending_time_mutex;
     std::atomic<bvar::LatencyRecorder*> _pending_time;
     bvar::PassiveStatus<double> _cumulated_worker_time;
     bvar::PerSecond<bvar::PassiveStatus<double> > _worker_usage_second;

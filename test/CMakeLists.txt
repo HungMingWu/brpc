@@ -112,8 +112,6 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/utf_offset_string_conversions_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/utf_string_conversions_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/cancellation_flag_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/condition_variable_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/lock_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/waitable_event_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/type_traits_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/non_thread_safe_unittest.cc
@@ -135,7 +133,6 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/errno_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/fd_guard_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/file_watcher_unittest.cpp
-    ${PROJECT_SOURCE_DIR}/test/find_cstr_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/scoped_lock_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/status_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/string_printf_unittest.cpp

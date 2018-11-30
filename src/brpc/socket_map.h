@@ -175,7 +175,7 @@ private:
     typedef butil::FlatMap<SocketMapKey, SingleConnection,
                            SocketMapKeyHasher> Map;
     SocketMapOptions _options;
-    butil::Mutex _mutex;
+    std::mutex _mutex;
     Map _map;
     bool _exposed_in_bvar;
     bvar::PassiveStatus<std::string>* _this_map_bvar;

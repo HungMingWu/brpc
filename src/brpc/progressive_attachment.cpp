@@ -124,7 +124,7 @@ int ProgressiveAttachment::Write(const butil::IOBuf& data) {
 
     int rpc_state = _rpc_state.load(std::memory_order_acquire);
     if (rpc_state == RPC_RUNNING) {
-        std::unique_lock<butil::Mutex> mu(_mutex);
+        std::unique_lock mu(_mutex);
         rpc_state = _rpc_state.load(std::memory_order_acquire);
         if (rpc_state == RPC_RUNNING) {
             if (_saved_buf.size() >= (size_t)FLAGS_socket_max_unwritten_bytes ||
@@ -157,7 +157,7 @@ int ProgressiveAttachment::Write(const void* data, size_t n) {
     }
     int rpc_state = _rpc_state.load(std::memory_order_acquire);
     if (rpc_state == RPC_RUNNING) {
-        std::unique_lock<butil::Mutex> mu(_mutex);
+        std::unique_lock mu(_mutex);
         rpc_state = _rpc_state.load(std::memory_order_relaxed);
         if (rpc_state == RPC_RUNNING) {
             if (_saved_buf.size() >= (size_t)FLAGS_socket_max_unwritten_bytes ||
@@ -199,7 +199,7 @@ void ProgressiveAttachment::MarkRPCAsDone(bool rpc_failed) {
     int ntry = 0;
     bool permanent_error = false;
     do {
-        std::unique_lock<butil::Mutex> mu(_mutex);
+        std::unique_lock mu(_mutex);
         if (_saved_buf.empty() || permanent_error || rpc_failed) {
             butil::IOBuf tmp;
             tmp.swap(_saved_buf); // Clear _saved_buf outside lock.

@@ -390,7 +390,7 @@ private:
     int _epfd;
     bool _stop;
     bthread_t _tid;
-    butil::Mutex _start_mutex;
+    std::mutex _start_mutex;
 };
 
 EpollThread epoll_thread[BTHREAD_EPOLL_THREAD_NUM];

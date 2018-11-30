@@ -21,6 +21,7 @@
 #include <algorithm>                     // std::find
 #include <vector>                        // std::vector
 #include <stdlib.h>                      // abort, atexit
+#include <mutex>
 
 namespace butil {
 namespace detail {
@@ -69,7 +70,7 @@ private:
 };
 
 static pthread_key_t thread_atexit_key;
-static pthread_once_t thread_atexit_once = PTHREAD_ONCE_INIT;
+static std::once_flag thread_atexit_once;
 
 static void delete_thread_exit_helper(void* arg) {
     delete static_cast<ThreadExitHelper*>(arg);
@@ -95,7 +96,7 @@ static void make_thread_atexit_key() {
 }
 
 detail::ThreadExitHelper* get_or_new_thread_exit_helper() {
-    pthread_once(&detail::thread_atexit_once, detail::make_thread_atexit_key);
+    std::call_once(detail::thread_atexit_once, detail::make_thread_atexit_key);
 
     detail::ThreadExitHelper* h =
         (detail::ThreadExitHelper*)pthread_getspecific(detail::thread_atexit_key);
@@ -109,7 +110,7 @@ detail::ThreadExitHelper* get_or_new_thread_exit_helper() {
 }
 
 detail::ThreadExitHelper* get_thread_exit_helper() {
-    pthread_once(&detail::thread_atexit_once, detail::make_thread_atexit_key);
+    std::call_once(detail::thread_atexit_once, detail::make_thread_atexit_key);
     return (detail::ThreadExitHelper*)pthread_getspecific(detail::thread_atexit_key);
 }
 

@@ -365,7 +365,7 @@ TEST_F(FlatMapTest, flat_map_of_string) {
     tm3.stop();
     tm1_2.start();
     for (size_t i = 0; i < N; ++i) {
-        sum += *find_cstr(m1, keys[i].c_str());
+        sum += *m1.seek(keys[i]);
     }
     tm1_2.stop();
 

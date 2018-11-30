@@ -19,10 +19,11 @@
 #include <set>                                  // std::set
 #include <fstream>                              // std::ifstream
 #include <sstream>                              // std::ostringstream
+#include <mutex>
+#include <condition_variable>
 #include <gflags/gflags.h>
 #include "butil/macros.h"                        // BAIDU_CASSERT
 #include "butil/containers/flat_map.h"           // butil::FlatMap
-#include "butil/scoped_lock.h"                   // BAIDU_SCOPE_LOCK
 #include "butil/string_splitter.h"               // butil::StringSplitter
 #include "butil/strings/string_split.h"          // butil::SplitStringIntoKeyValuePairs
 #include "butil/errno.h"                         // berror
@@ -75,15 +76,10 @@ public:
 typedef butil::FlatMap<std::string, VarEntry> VarMap;
 
 struct VarMapWithLock : public VarMap {
-    pthread_mutex_t mutex;
+    std::recursive_mutex mutex;
 
     VarMapWithLock() {
         CHECK_EQ(0, init(1024, 80));
-        pthread_mutexattr_t attr;
-        pthread_mutexattr_init(&attr);
-        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-        pthread_mutex_init(&mutex, &attr);
-        pthread_mutexattr_destroy(&attr);
     }
 };
 
@@ -155,7 +151,7 @@ int Variable::expose_impl(const butil::StringPiece& prefix,
     
     VarMapWithLock& m = get_var_map(_name);
     {
-        BAIDU_SCOPED_LOCK(m.mutex);
+        std::lock_guard guard(m.mutex);
         VarEntry* entry = m.seek(_name);
         if (entry == NULL) {
             entry = &m[_name];
@@ -185,7 +181,7 @@ bool Variable::hide() {
         return false;
     }
     VarMapWithLock& m = get_var_map(_name);
-    BAIDU_SCOPED_LOCK(m.mutex);
+    std::lock_guard guard(m.mutex);
     VarEntry* entry = m.seek(_name);
     if (entry) {
         CHECK_EQ(1UL, m.erase(_name));
@@ -208,7 +204,7 @@ void Variable::list_exposed(std::vector<std::string>* names,
     VarMapWithLock* var_maps = get_var_maps();
     for (size_t i = 0; i < SUB_MAP_COUNT; ++i) {
         VarMapWithLock& m = var_maps[i];
-        std::unique_lock<pthread_mutex_t> mu(m.mutex);
+        std::unique_lock mu(m.mutex);
         size_t n = 0;
         for (VarMap::const_iterator it = m.begin(); it != m.end(); ++it) {
             if (++n >= 256/*max iterated one pass*/) {
@@ -245,7 +241,7 @@ int Variable::describe_exposed(const std::string& name, std::ostream& os,
                                bool quote_string,
                                DisplayFilter display_filter) {
     VarMapWithLock& m = get_var_map(name);
-    BAIDU_SCOPED_LOCK(m.mutex);
+    std::lock_guard guard(m.mutex);
     VarEntry* p = m.seek(name);
     if (p == NULL) {
         return -1;
@@ -285,7 +281,7 @@ int Variable::describe_series_exposed(const std::string& name,
                                       std::ostream& os,
                                       const SeriesOptions& options) {
     VarMapWithLock& m = get_var_map(name);
-    BAIDU_SCOPED_LOCK(m.mutex);
+    std::lock_guard guard(m.mutex);
     VarEntry* p = m.seek(name);
     if (p == NULL) {
         return -1;
@@ -296,7 +292,7 @@ int Variable::describe_series_exposed(const std::string& name,
 #ifdef BAIDU_INTERNAL
 int Variable::get_exposed(const std::string& name, boost::any* value) {
     VarMapWithLock& m = get_var_map(name);
-    BAIDU_SCOPED_LOCK(m.mutex);
+    std::lock_guard guard(m.mutex);
     VarEntry* p = m.seek(name);
     if (p == NULL) {
         return -1;
@@ -665,8 +661,8 @@ private:
 
 static pthread_once_t dumping_thread_once = PTHREAD_ONCE_INIT;
 static bool created_dumping_thread = false;
-static pthread_mutex_t dump_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t dump_cond = PTHREAD_COND_INITIALIZER;
+static std::mutex dump_mutex;
+static std::condition_variable dump_cond;
 
 DEFINE_bool(bvar_dump, false,
             "Create a background thread dumping all bvar periodically, "
@@ -762,10 +758,8 @@ static void* dumping_thread(void*) {
             LOG(ERROR) << "Bad cond_sleep_ms=" << cond_sleep_ms;
             cond_sleep_ms = 10000;
         }
-        timespec deadline = butil::milliseconds_from_now(cond_sleep_ms);
-        pthread_mutex_lock(&dump_mutex);
-        pthread_cond_timedwait(&dump_cond, &dump_mutex, &deadline);
-        pthread_mutex_unlock(&dump_mutex);
+        std::unique_lock lock(dump_mutex);
+        dump_cond.wait_for(lock, std::chrono::milliseconds(cond_sleep_ms));
         usleep(post_sleep_ms * 1000);
     }
 }
@@ -819,7 +813,7 @@ const bool ALLOW_UNUSED dummy_bvar_log_dumpped = ::GFLAGS_NS::RegisterFlagValida
 static bool wakeup_dumping_thread(const char*, const std::string&) {
     // We're modifying a flag, wake up dumping_thread to generate
     // a new file soon.
-    pthread_cond_signal(&dump_cond);
+    dump_cond.notify_one();
     return true;
 }
 

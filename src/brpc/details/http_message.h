@@ -93,14 +93,14 @@ protected:
     
 private:
     DISALLOW_COPY_AND_ASSIGN(HttpMessage);
-    int UnlockAndFlushToBodyReader(std::unique_lock<butil::Mutex>& locked);
+    int UnlockAndFlushToBodyReader(std::unique_lock<std::mutex>& locked);
 
     HttpParserStage _stage;
     std::string _url;
     HttpHeader _header;
     bool _read_body_progressively;
     // For mutual exclusion between on_body and SetBodyReader.
-    butil::Mutex _body_mutex;
+    std::mutex _body_mutex;
     // Read body progressively
     ProgressiveReader* _body_reader;
     butil::IOBuf _body;

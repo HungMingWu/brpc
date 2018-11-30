@@ -96,7 +96,6 @@
 #include <iostream>                               // std::ostream
 #include "butil/type_traits.h"
 #include "butil/logging.h"
-#include "butil/find_cstr.h"
 #include "butil/single_threaded_pool.h"            // SingleThreadedPool
 #include "butil/containers/hash_tables.h"          // hash<>
 #include "butil/bit_array.h"                       // bit_array_*
@@ -425,57 +424,6 @@ struct DefaultEqualTo<std::string> {
     bool operator()(const std::string& s1, const char* s2) const
     { return s1 == s2; }
 };
-
-// find_cstr and find_lowered_cstr
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-const _T* find_cstr(const FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-                    const char* key) {
-    return m.seek(key);
-}
-
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-_T* find_cstr(FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-              const char* key) {
-    return m.seek(key);
-}
-
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-const _T* find_cstr(const FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-                    const char* key, size_t length) {
-    return m.seek(butil::StringPiece(key, length));
-}
-
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-_T* find_cstr(FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-              const char* key, size_t length) {
-    return m.seek(butil::StringPiece(key, length));
-}
-
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-const _T* find_lowered_cstr(
-    const FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-    const char* key) {
-    return m.seek(*tls_stringmap_temp.get_lowered_string(key));
-}
-
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-_T* find_lowered_cstr(FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-                      const char* key) {
-    return m.seek(*tls_stringmap_temp.get_lowered_string(key));
-}
-
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-const _T* find_lowered_cstr(
-    const FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-    const char* key, size_t length) {
-    return m.seek(*tls_stringmap_temp.get_lowered_string(key, length));
-}
-
-template <typename _T, typename _Hash, typename _Equal, bool _Sparse>
-_T* find_lowered_cstr(FlatMap<std::string, _T, _Hash, _Equal, _Sparse>& m,
-                      const char* key, size_t length) {
-    return m.seek(*tls_stringmap_temp.get_lowered_string(key, length));
-}
 
 }  // namespace butil
 

@@ -16,7 +16,6 @@
 #include <list>
 #include <utility>
 #include "butil/memory/ref_counted.h"
-#include "butil/synchronization/lock.h"
 #endif
 
 namespace butil {
@@ -147,7 +146,7 @@ class BUTIL_EXPORT WaitableEvent {
 
     bool Dequeue(Waiter* waiter, void* tag);
 
-    butil::Lock lock_;
+    std::mutex lock_;
     const bool manual_reset_;
     bool signaled_;
     std::list<Waiter*> waiters_;
