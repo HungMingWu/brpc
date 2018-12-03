@@ -6,7 +6,6 @@
 #define BUTIL_MEMORY_RAW_SCOPED_REFPTR_MISMATCH_CHECKER_H_
 
 #include "butil/memory/ref_counted.h"
-#include "butil/type_traits.h"
 #include "butil/build_config.h"
 
 // It is dangerous to post a task with a T* argument where T is a subtype of
@@ -26,16 +25,16 @@ template <typename T>
 struct NeedsScopedRefptrButGetsRawPtr {
 #if defined(OS_WIN)
   enum {
-    value = butil::false_type::value
+    value = std::false_type::value
   };
 #else
   enum {
     // Human readable translation: you needed to be a scoped_refptr if you are a
     // raw pointer type and are convertible to a RefCounted(Base|ThreadSafeBase)
     // type.
-    value = (is_pointer<T>::value &&
-             (is_convertible<T, subtle::RefCountedBase*>::value ||
-              is_convertible<T, subtle::RefCountedThreadSafeBase*>::value))
+    value = (std::is_pointer<T>::value &&
+             (std::is_convertible<T, subtle::RefCountedBase*>::value ||
+              std::is_convertible<T, subtle::RefCountedThreadSafeBase*>::value))
   };
 #endif
 };

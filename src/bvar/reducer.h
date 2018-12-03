@@ -19,8 +19,8 @@
 #define  BVAR_REDUCER_H
 
 #include <limits>                                 // std::numeric_limits
+#include <type_traits>
 #include "butil/logging.h"                         // LOG()
-#include "butil/type_traits.h"                     // butil::add_cr_non_integral
 #include "butil/class_name.h"                      // class_name_str
 #include "bvar/variable.h"                        // Variable
 #include "bvar/detail/combiner.h"                 // detail::AgentCombiner
@@ -113,7 +113,7 @@ public:
     // Notice that this function walks through threads that ever add values
     // into this reducer. You should avoid calling it frequently.
     T get_value() const {
-        CHECK(!(butil::is_same<InvOp, detail::VoidOp>::value) || _sampler == NULL)
+        CHECK(!(std::is_same<InvOp, detail::VoidOp>::value) || _sampler == NULL)
             << "You should not call Reducer<" << butil::class_name_str<T>()
             << ", " << butil::class_name_str<Op>() << ">::get_value() when a"
             << " Window<> is used because the operator does not have inverse.";
@@ -127,7 +127,7 @@ public:
 
     // Implement Variable::describe() and Variable::get_value().
     void describe(std::ostream& os, bool quote_string) const {
-        if (butil::is_same<T, std::string>::value && quote_string) {
+        if (std::is_same<T, std::string>::value && quote_string) {
             os << '"' << get_value() << '"';
         } else {
             os << get_value();
@@ -170,8 +170,8 @@ protected:
         const int rc = Variable::expose_impl(prefix, name, display_filter);
         if (rc == 0 &&
             _series_sampler == NULL &&
-            !butil::is_same<InvOp, detail::VoidOp>::value &&
-            !butil::is_same<T, std::string>::value &&
+            std::is_same<InvOp, detail::VoidOp>::value &&
+            std::is_same<T, std::string>::value &&
             FLAGS_save_series) {
             _series_sampler = new SeriesSampler(this, _combiner.op());
             _series_sampler->schedule();

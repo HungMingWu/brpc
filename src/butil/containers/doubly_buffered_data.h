@@ -27,7 +27,6 @@
 #include "butil/thread_local.h"
 #include "butil/logging.h"
 #include "butil/macros.h"
-#include "butil/type_traits.h"
 #include "butil/errno.h"
 
 namespace butil {
@@ -283,8 +282,8 @@ DoublyBufferedData<T, TLS>::DoublyBufferedData()
     }
     // Initialize _data for some POD types. This is essential for pointer
     // types because they should be Read() as NULL before any Modify().
-    if (is_integral<T>::value || is_floating_point<T>::value ||
-        is_pointer<T>::value || is_member_function_pointer<T>::value) {
+    if (std::is_integral<T>::value || std::is_floating_point<T>::value ||
+        std::is_pointer<T>::value || std::is_member_function_pointer<T>::value) {
         _data[0] = T();
         _data[1] = T();
     }

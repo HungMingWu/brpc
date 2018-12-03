@@ -45,8 +45,8 @@ public:
     struct PlaceHolderOp {
         void operator()(Tp&, const Tp&) const {}
     };
-    static const bool ADDITIVE = (butil::is_integral<Tp>::value ||
-                                  butil::is_floating_point<Tp>::value ||
+    static const bool ADDITIVE = (std::is_integral<Tp>::value ||
+                                  std::is_floating_point<Tp>::value ||
                                   is_vector<Tp>::value);
     class SeriesSampler : public detail::Sampler {
     public:

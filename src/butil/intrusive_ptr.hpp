@@ -32,9 +32,9 @@ namespace butil {
 
 namespace detail {
 
-// NOTE: sp_convertible is different from butil::is_convertible
+// NOTE: sp_convertible is different from std::is_convertible
 // (in butil/type_traits.h) that it converts pointers only. Using
-// butil::is_convertible results in ctor/dtor issues.
+// std::is_convertible results in ctor/dtor issues.
 template< class Y, class T > struct sp_convertible {
     typedef char (&yes) [1];
     typedef char (&no)  [2];

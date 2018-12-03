@@ -8,7 +8,6 @@
 #include <limits>
 
 #include "butil/macros.h"
-#include "butil/type_traits.h"
 
 namespace butil {
 namespace internal {

@@ -110,7 +110,7 @@ public:
     
     // Implement Variable::describe() and Variable::get_value().
     void describe(std::ostream& os, bool quote_string) const {
-        if (butil::is_same<value_type, std::string>::value && quote_string) {
+        if (std::is_same<value_type, std::string>::value && quote_string) {
             os << '"' << get_value() << '"';
         } else {
             os << get_value();
@@ -230,7 +230,7 @@ public:
         if (s.time_us <= 0) {
             return static_cast<value_type>(0);
         }
-        if (butil::is_floating_point<value_type>::value) {
+        if (std::is_floating_point<value_type>::value) {
             return static_cast<value_type>(s.data * 1000000.0 / s.time_us);
         } else {
             return static_cast<value_type>(round(s.data * 1000000.0 / s.time_us));

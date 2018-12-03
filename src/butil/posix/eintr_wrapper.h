@@ -17,7 +17,6 @@
 #define BUTIL_POSIX_EINTR_WRAPPER_H_
 
 #include "butil/build_config.h"
-#include "butil/macros.h"   // BAIDU_TYPEOF
 
 #if defined(OS_POSIX)
 
@@ -26,7 +25,7 @@
 #if defined(NDEBUG)
 
 #define HANDLE_EINTR(x) ({ \
-  BAIDU_TYPEOF(x) eintr_wrapper_result; \
+  decltype(x) eintr_wrapper_result; \
   do { \
     eintr_wrapper_result = (x); \
   } while (eintr_wrapper_result == -1 && errno == EINTR); \
@@ -37,7 +36,7 @@
 
 #define HANDLE_EINTR(x) ({ \
   int eintr_wrapper_counter = 0; \
-  BAIDU_TYPEOF(x) eintr_wrapper_result; \
+  decltype(x) eintr_wrapper_result; \
   do { \
     eintr_wrapper_result = (x); \
   } while (eintr_wrapper_result == -1 && errno == EINTR && \
@@ -48,7 +47,7 @@
 #endif  // NDEBUG
 
 #define IGNORE_EINTR(x) ({ \
-  BAIDU_TYPEOF(x) eintr_wrapper_result;     \
+  decltype(x) eintr_wrapper_result;     \
   do { \
     eintr_wrapper_result = (x); \
     if (eintr_wrapper_result == -1 && errno == EINTR) { \

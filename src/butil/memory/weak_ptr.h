@@ -67,7 +67,6 @@
 #include "butil/base_export.h"
 #include "butil/logging.h"
 #include "butil/memory/ref_counted.h"
-#include "butil/type_traits.h"
 
 namespace butil {
 
@@ -151,7 +150,7 @@ class SupportsWeakPtrBase {
   template<typename Derived>
   static WeakPtr<Derived> StaticAsWeakPtr(Derived* t) {
     typedef
-        is_convertible<Derived, internal::SupportsWeakPtrBase&> convertible;
+        std::is_convertible<Derived, internal::SupportsWeakPtrBase&> convertible;
     COMPILE_ASSERT(convertible::value,
                    AsWeakPtr_argument_inherits_from_SupportsWeakPtr);
     return AsWeakPtrImpl<Derived>(t, *t);

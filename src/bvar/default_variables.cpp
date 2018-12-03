@@ -40,7 +40,7 @@ namespace bvar {
 
 template <class T, class M> M get_member_type(M T::*);
 
-#define BVAR_MEMBER_TYPE(member) BAIDU_TYPEOF(bvar::get_member_type(member))
+#define BVAR_MEMBER_TYPE(member) decltype(bvar::get_member_type(member))
 
 int do_link_default_variables = 0;
 const int64_t CACHED_INTERVAL_US = 100000L; // 100ms

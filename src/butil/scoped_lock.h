@@ -29,8 +29,7 @@
 
 #if !defined(BUTIL_CXX11_ENABLED)
 #define BAIDU_SCOPED_LOCK(ref_of_lock)                                  \
-    std::lock_guard<BAIDU_TYPEOF(ref_of_lock)>                          \
-    BAIDU_CONCAT(scoped_locker_dummy_at_line_, __LINE__)(ref_of_lock)
+    std::lock_guard BAIDU_CONCAT(scoped_locker_dummy_at_line_, __LINE__)(ref_of_lock)
 #else
 
 // NOTE(gejun): c++11 deduces additional reference to the type.

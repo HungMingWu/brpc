@@ -22,7 +22,6 @@
 #include <string>                       // std::string
 #include <vector>                       // std::vector
 #include <mutex>
-#include "butil/type_traits.h"           // butil::add_cr_non_integral
 #include "butil/containers/linked_list.h"// LinkNode
 #include "bvar/detail/agent_group.h"    // detail::AgentGroup
 #include "bvar/detail/is_atomical.h"
@@ -106,7 +105,7 @@ private:
 
 template <typename T>
 class ElementContainer<
-    T, typename butil::enable_if<is_atomical<T>::value>::type> {
+    T, typename std::enable_if<is_atomical<T>::value>::type> {
 public:
     // We don't need any memory fencing here, every op is relaxed.
     

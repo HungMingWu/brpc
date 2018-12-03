@@ -21,7 +21,7 @@
 #include <atomic>
 #include <mutex>
 #include <string>                       // std::string
-#include "butil/type_traits.h"
+#include <type_traits>
 #include "butil/string_printf.h"
 #include "bvar/detail/is_atomical.h"
 #include "bvar/variable.h"
@@ -83,7 +83,7 @@ private:
 };
 
 template <typename T>
-class Status<T, typename butil::enable_if<detail::is_atomical<T>::value>::type>
+class Status<T, typename std::enable_if<detail::is_atomical<T>::value>::type>
     : public Variable {
 public:
     Status() {}
