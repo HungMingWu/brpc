@@ -22,7 +22,6 @@
 #include <atomic>
 #include "butil/at_exit.h"
 #include "butil/base_export.h"
-#include "butil/memory/aligned_memory.h"
 #include "butil/third_party/dynamic_annotations/dynamic_annotations.h"
 #include "butil/threading/thread_restrictions.h"
 
@@ -128,7 +127,7 @@ struct StaticMemorySingletonTraits {
     if (dead_.exchange(1, std::memory_order_relaxed))
       return NULL;
 
-    return new(buffer_.void_data()) Type();
+    return new(&buffer_) Type();
   }
 
   static void Delete(Type* p) {
@@ -145,13 +144,12 @@ struct StaticMemorySingletonTraits {
   }
 
  private:
-  static butil::AlignedMemory<sizeof(Type), ALIGNOF(Type)> buffer_;
+  static std::aligned_storage<sizeof(Type), alignof(Type)> buffer_;
   // Signal the object was already deleted, so it is not revived.
   static std::atomic_int32_t dead_;
 };
 
-template <typename Type> butil::AlignedMemory<sizeof(Type), ALIGNOF(Type)>
-    StaticMemorySingletonTraits<Type>::buffer_;
+template <typename Type> std::aligned_storage<sizeof(Type), alignof(Type)> StaticMemorySingletonTraits<Type>::buffer_;
 template <typename Type> std::atomic_int32_t
     StaticMemorySingletonTraits<Type>::dead_ { 0 };
 

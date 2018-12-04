@@ -10,10 +10,8 @@
 
 // We need two locks because they're sometimes grabbed at the same time.
 // A single lock would lead to an attempted recursive grab.
-static butil::LazyInstance<std::mutex>::Leaky
-    dtoa_lock_0 = LAZY_INSTANCE_INITIALIZER;
-static butil::LazyInstance<std::mutex>::Leaky
-    dtoa_lock_1 = LAZY_INSTANCE_INITIALIZER;
+static butil::LazyInstance<std::mutex>::Leaky dtoa_lock_0;
+static butil::LazyInstance<std::mutex>::Leaky dtoa_lock_1;
 
 /*
  * This define and the code below is to trigger thread-safe behavior

@@ -245,8 +245,7 @@ class UnixEpochSingleton {
   DISALLOW_COPY_AND_ASSIGN(UnixEpochSingleton);
 };
 
-static LazyInstance<UnixEpochSingleton>::Leaky
-    leaky_unix_epoch_singleton_instance = LAZY_INSTANCE_INITIALIZER;
+static LazyInstance<UnixEpochSingleton>::Leaky leaky_unix_epoch_singleton_instance;
 
 // Static
 TimeTicks TimeTicks::UnixEpoch() {

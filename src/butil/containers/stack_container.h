@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "butil/basictypes.h"
-#include "butil/memory/aligned_memory.h"
 #include "butil/strings/string16.h"
 #include "butil/build_config.h"
 
@@ -47,17 +46,17 @@ class StackAllocator : public std::allocator<T> {
     }
 
     // Casts the buffer in its right type.
-    T* stack_buffer() { return stack_buffer_.template data_as<T>(); }
+    T* stack_buffer() { return reinterpret_cast<T*>(&stack_buffer_); }
     const T* stack_buffer() const {
-      return stack_buffer_.template data_as<T>();
+      return reinterpret_cast<const T*>(&stack_buffer_);
     }
 
     // The buffer itself. It is not of type T because we don't want the
     // constructors and destructors to be automatically called. Define a POD
     // buffer of the right size instead.
-    butil::AlignedMemory<sizeof(T[stack_capacity]), ALIGNOF(T)> stack_buffer_;
+    std::aligned_storage<sizeof(T[stack_capacity]), alignof(T)> stack_buffer_;
 #if defined(__GNUC__) && !defined(ARCH_CPU_X86_FAMILY)
-    COMPILE_ASSERT(ALIGNOF(T) <= 16, crbug_115612);
+    COMPILE_ASSERT(alignof(T) <= 16, crbug_115612);
 #endif
 
     // Set when the stack buffer is used for an allocation. We do not track

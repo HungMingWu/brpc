@@ -14,14 +14,11 @@ namespace butil {
 
 namespace {
 
-LazyInstance<ThreadLocalBoolean>::Leaky
-    g_io_disallowed = LAZY_INSTANCE_INITIALIZER;
+LazyInstance<ThreadLocalBoolean>::Leaky g_io_disallowed;
 
-LazyInstance<ThreadLocalBoolean>::Leaky
-    g_singleton_disallowed = LAZY_INSTANCE_INITIALIZER;
+LazyInstance<ThreadLocalBoolean>::Leaky g_singleton_disallowed;
 
-LazyInstance<ThreadLocalBoolean>::Leaky
-    g_wait_disallowed = LAZY_INSTANCE_INITIALIZER;
+LazyInstance<ThreadLocalBoolean>::Leaky g_wait_disallowed;
 
 }  // anonymous namespace
 

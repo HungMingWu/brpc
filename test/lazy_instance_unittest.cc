@@ -5,7 +5,6 @@
 #include "butil/at_exit.h"
 #include "butil/atomic_sequence_num.h"
 #include "butil/lazy_instance.h"
-#include "butil/memory/aligned_memory.h"
 #include "butil/threading/simple_thread.h"
 #include <gtest/gtest.h>
 
@@ -57,8 +56,7 @@ class SlowDelegate : public butil::DelegateSimpleThread::Delegate {
 
 }  // namespace
 
-static butil::LazyInstance<ConstructAndDestructLogger> lazy_logger =
-    LAZY_INSTANCE_INITIALIZER;
+static butil::LazyInstance<ConstructAndDestructLogger> lazy_logger;
 
 TEST(LazyInstanceTest, Basic) {
   {
@@ -79,8 +77,7 @@ TEST(LazyInstanceTest, Basic) {
   EXPECT_EQ(4, destructed_seq_.GetNext());
 }
 
-static butil::LazyInstance<SlowConstructor> lazy_slow =
-    LAZY_INSTANCE_INITIALIZER;
+static butil::LazyInstance<SlowConstructor> lazy_slow;
 
 TEST(LazyInstanceTest, ConstructorThreadSafety) {
   {
@@ -124,7 +121,7 @@ TEST(LazyInstanceTest, LeakyLazyInstance) {
   bool deleted1 = false;
   {
     butil::ShadowingAtExitManager shadow;
-    static butil::LazyInstance<DeleteLogger> test = LAZY_INSTANCE_INITIALIZER;
+    static butil::LazyInstance<DeleteLogger> test;
     test.Get().SetDeletedPtr(&deleted1);
   }
   EXPECT_TRUE(deleted1);
@@ -134,39 +131,8 @@ TEST(LazyInstanceTest, LeakyLazyInstance) {
   bool deleted2 = false;
   {
     butil::ShadowingAtExitManager shadow;
-    static butil::LazyInstance<DeleteLogger>::Leaky
-        test = LAZY_INSTANCE_INITIALIZER;
+    static butil::LazyInstance<DeleteLogger>::Leaky test;
     test.Get().SetDeletedPtr(&deleted2);
   }
   EXPECT_FALSE(deleted2);
-}
-
-namespace {
-
-template <size_t alignment>
-class AlignedData {
- public:
-  AlignedData() {}
-  ~AlignedData() {}
-  butil::AlignedMemory<alignment, alignment> data_;
-};
-
-}  // anonymous namespace
-
-#define EXPECT_ALIGNED(ptr, align) \
-    EXPECT_EQ(0u, reinterpret_cast<uintptr_t>(ptr) & (align - 1))
-
-TEST(LazyInstanceTest, Alignment) {
-  using butil::LazyInstance;
-
-  // Create some static instances with increasing sizes and alignment
-  // requirements. By ordering this way, the linker will need to do some work to
-  // ensure proper alignment of the static data.
-  static LazyInstance<AlignedData<4> > align4 = LAZY_INSTANCE_INITIALIZER;
-  static LazyInstance<AlignedData<32> > align32 = LAZY_INSTANCE_INITIALIZER;
-  static LazyInstance<AlignedData<4096> > align4096 = LAZY_INSTANCE_INITIALIZER;
-
-  EXPECT_ALIGNED(align4.Pointer(), 4);
-  EXPECT_ALIGNED(align32.Pointer(), 32);
-  EXPECT_ALIGNED(align4096.Pointer(), 4096);
 }

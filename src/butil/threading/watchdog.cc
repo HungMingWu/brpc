@@ -31,7 +31,7 @@ struct StaticData {
   TimeDelta last_debugged_alarm_delay;
 };
 
-LazyInstance<StaticData>::Leaky g_static_data = LAZY_INSTANCE_INITIALIZER;
+LazyInstance<StaticData>::Leaky g_static_data;
 
 }  // namespace
 

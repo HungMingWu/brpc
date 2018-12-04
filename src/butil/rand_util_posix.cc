@@ -32,7 +32,7 @@ class URandomFd {
   const int fd_;
 };
 
-butil::LazyInstance<URandomFd>::Leaky g_urandom_fd = LAZY_INSTANCE_INITIALIZER;
+butil::LazyInstance<URandomFd>::Leaky g_urandom_fd;
 
 }  // namespace
 

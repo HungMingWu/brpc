@@ -42,15 +42,8 @@
 #include "butil/basictypes.h"
 #include "butil/debug/leak_annotations.h"
 #include "butil/logging.h"
-#include "butil/memory/aligned_memory.h"
 #include "butil/third_party/dynamic_annotations/dynamic_annotations.h"
 #include "butil/threading/thread_restrictions.h"
-
-// LazyInstance uses its own struct initializer-list style static
-// initialization, as base's LINKER_INITIALIZED requires a constructor and on
-// some compilers (notably gcc 4.4) this still ends up needing runtime
-// initialization.
-#define LAZY_INSTANCE_INITIALIZER { 0, {{0}} }
 
 namespace butil {
 
@@ -62,7 +55,7 @@ struct DefaultLazyInstanceTraits {
 #endif
 
   static Type* New(void* instance) {
-    DCHECK_EQ(reinterpret_cast<uintptr_t>(instance) & (ALIGNOF(Type) - 1), 0u)
+    DCHECK_EQ(reinterpret_cast<uintptr_t>(instance) & (alignof(Type) - 1), 0u)
         << ": Bad boy, the buffer passed to placement new is not aligned!\n"
         "This may break some stuff like SSE-based optimizations assuming the "
         "<Type> objects are word aligned.";
@@ -178,7 +171,7 @@ class LazyInstance {
         internal::NeedsLazyInstance(&private_instance_)) {
       // Create the instance in the space provided by |private_buf_|.
       value = reinterpret_cast<intptr_t>(
-          Traits::New(private_buf_.void_data()));
+          Traits::New(&private_buf_));
       internal::CompleteLazyInstance(&private_instance_, value, this,
                                      Traits::kRegisterOnExit ? OnExit : NULL);
     }
@@ -197,7 +190,7 @@ class LazyInstance {
       case 0:
         return p == NULL;
       case internal::kLazyInstanceStateCreating:
-        return static_cast<void*>(p) == private_buf_.void_data();
+        return static_cast<void*>(p) == &private_buf_;
       default:
         return p == instance();
     }
@@ -209,7 +202,7 @@ class LazyInstance {
 
   std::atomic_intptr_t private_instance_;
   // Preallocated space for the Type instance.
-  butil::AlignedMemory<sizeof(Type), ALIGNOF(Type)> private_buf_;
+  std::aligned_storage<sizeof(Type), alignof(Type)> private_buf_;
 
  private:
   Type* instance() {

@@ -6,7 +6,6 @@
 
 #include <algorithm>
 
-#include "butil/memory/aligned_memory.h"
 #include "butil/memory/ref_counted.h"
 #include <gtest/gtest.h>
 
@@ -104,9 +103,9 @@ namespace {
 template <size_t alignment>
 class AlignedData {
  public:
-  AlignedData() { memset(data_.void_data(), 0, alignment); }
+  AlignedData() { memset(&data_, 0, alignment); }
   ~AlignedData() {}
-  butil::AlignedMemory<alignment, alignment> data_;
+  std::aligned_storage<alignment, alignment> data_;
 };
 
 }  // anonymous namespace
@@ -124,11 +123,11 @@ class AlignedData {
 TEST(StackContainer, BufferAlignment) {
   StackVector<wchar_t, 16> text;
   text->push_back(L'A');
-  EXPECT_ALIGNED(&text[0], ALIGNOF(wchar_t));
+  EXPECT_ALIGNED(&text[0], alignof(wchar_t));
 
   StackVector<double, 1> doubles;
   doubles->push_back(0.0);
-  EXPECT_ALIGNED(&doubles[0], ALIGNOF(double));
+  EXPECT_ALIGNED(&doubles[0], alignof(double));
 
   StackVector<AlignedData<16>, 1> aligned16;
   aligned16->push_back(AlignedData<16>());

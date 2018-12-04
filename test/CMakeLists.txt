@@ -81,18 +81,14 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/hash_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/lazy_instance_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/md5_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/aligned_memory_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/linked_ptr_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/ref_counted_memory_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/ref_counted_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_ptr_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_vector_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/singleton_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/weak_ptr_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/observer_list_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/file_descriptor_shuffle_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/rand_util_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/safe_numerics_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_clear_errno_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_generic_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/security_unittest.cc
