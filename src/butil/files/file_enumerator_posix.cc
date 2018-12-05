@@ -9,7 +9,6 @@
 #include <fnmatch.h>
 
 #include "butil/logging.h"
-#include "butil/threading/thread_restrictions.h"
 
 namespace butil {
 
@@ -118,7 +117,6 @@ FileEnumerator::FileInfo FileEnumerator::GetInfo() const {
 
 bool FileEnumerator::ReadDirectory(std::vector<FileInfo>* entries,
                                    const FilePath& source, bool show_links) {
-  butil::ThreadRestrictions::AssertIOAllowed();
   DIR* dir = opendir(source.value().c_str());
   if (!dir)
     return false;

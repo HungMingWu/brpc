@@ -15,9 +15,7 @@
 #ifndef BUTIL_SYNCHRONIZATION_SPIN_WAIT_H_
 #define BUTIL_SYNCHRONIZATION_SPIN_WAIT_H_
 
-#include "butil/threading/platform_thread.h"
-#include "butil/time/time.h"
-
+#include <thread>
 // Provide a macro that will wait no longer than 1 second for an asynchronous
 // change is the value of an expression.
 // A typical use would be:
@@ -43,7 +41,7 @@
                 kTimeout.InMilliseconds()) << "Timed out"; \
         break; \
       } \
-      butil::PlatformThread::Sleep(butil::TimeDelta::FromMilliseconds(50)); \
+      std::this_thread::sleep_for(std::chrono::milliseconds(50)); \
     } \
   } while (0)
 

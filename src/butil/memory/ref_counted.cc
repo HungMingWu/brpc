@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "butil/memory/ref_counted.h"
-#include "butil/threading/thread_collision_warner.h"
 
 namespace butil {
 

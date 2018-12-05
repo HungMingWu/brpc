@@ -38,7 +38,6 @@
 #include "butil/memory/singleton.h"
 #include "butil/numerics/safe_conversions.h"
 #include "butil/posix/eintr_wrapper.h"
-#include "butil/strings/string_number_conversions.h"
 #include "butil/build_config.h"
 
 #if defined(USE_SYMBOLIZE)

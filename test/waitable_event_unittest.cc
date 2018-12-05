@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <thread>
 #include "butil/synchronization/waitable_event.h"
 
 #include "butil/compiler_specific.h"
-#include "butil/threading/platform_thread.h"
 #include "butil/time/time.h"
 #include <gtest/gtest.h>
 
@@ -71,15 +71,15 @@ TEST(WaitableEventTest, WaitManyShortcut) {
     delete ev[i];
 }
 
-class WaitableEventSignaler : public PlatformThread::Delegate {
+class WaitableEventSignaler {
  public:
   WaitableEventSignaler(double seconds, WaitableEvent* ev)
       : seconds_(seconds),
         ev_(ev) {
   }
 
-  virtual void ThreadMain() OVERRIDE {
-    PlatformThread::Sleep(TimeDelta::FromSeconds(static_cast<int>(seconds_)));
+  void operator()() {
+    std::this_thread::sleep_for(std::chrono::seconds(static_cast<int>(seconds_)));
     ev_->Signal();
   }
 
@@ -94,12 +94,11 @@ TEST(WaitableEventTest, WaitMany) {
     ev[i] = new WaitableEvent(false, false);
 
   WaitableEventSignaler signaler(0.1, ev[2]);
-  PlatformThreadHandle thread;
-  PlatformThread::Create(0, &signaler, &thread);
+  std::thread th(signaler);
 
   EXPECT_EQ(WaitableEvent::WaitMany(ev, 5), 2u);
 
-  PlatformThread::Join(thread);
+  th.join();
 
   for (unsigned i = 0; i < 5; ++i)
     delete ev[i];

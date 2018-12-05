@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #include "butil/logging.h"
-#include "butil/threading/thread_restrictions.h"
 
 namespace butil {
 
@@ -17,7 +16,6 @@ MemoryMappedFile::MemoryMappedFile() : data_(NULL), length_(0) {
 }
 
 bool MemoryMappedFile::MapFileToMemory() {
-  ThreadRestrictions::AssertIOAllowed();
 
   struct stat file_stat;
   if (fstat(file_.GetPlatformFile(), &file_stat) == -1 ) {
@@ -35,7 +33,6 @@ bool MemoryMappedFile::MapFileToMemory() {
 }
 
 void MemoryMappedFile::CloseHandles() {
-  ThreadRestrictions::AssertIOAllowed();
 
   if (data_ != NULL)
     munmap(data_, length_);

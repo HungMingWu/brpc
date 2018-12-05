@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <thread>
 #include "butil/at_exit.h"
 #include "butil/atomic_sequence_num.h"
 #include "butil/lazy_instance.h"
-#include "butil/threading/simple_thread.h"
 #include <gtest/gtest.h>
 
 namespace {
@@ -27,7 +27,7 @@ class SlowConstructor {
  public:
   SlowConstructor() : some_int_(0) {
     // Sleep for 1 second to try to cause a race.
-    butil::PlatformThread::Sleep(butil::TimeDelta::FromSeconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     ++constructed;
     some_int_ = 12;
   }
@@ -39,20 +39,6 @@ class SlowConstructor {
 };
 
 int SlowConstructor::constructed = 0;
-
-class SlowDelegate : public butil::DelegateSimpleThread::Delegate {
- public:
-  explicit SlowDelegate(butil::LazyInstance<SlowConstructor>* lazy)
-      : lazy_(lazy) {}
-
-  virtual void Run() OVERRIDE {
-    EXPECT_EQ(12, lazy_->Get().some_int());
-    EXPECT_EQ(12, lazy_->Pointer()->some_int());
-  }
-
- private:
-  butil::LazyInstance<SlowConstructor>* lazy_;
-};
 
 }  // namespace
 
@@ -78,23 +64,6 @@ TEST(LazyInstanceTest, Basic) {
 }
 
 static butil::LazyInstance<SlowConstructor> lazy_slow;
-
-TEST(LazyInstanceTest, ConstructorThreadSafety) {
-  {
-    butil::ShadowingAtExitManager shadow;
-
-    SlowDelegate delegate(&lazy_slow);
-    EXPECT_EQ(0, SlowConstructor::constructed);
-
-    butil::DelegateSimpleThreadPool pool("lazy_instance_cons", 5);
-    pool.AddWork(&delegate, 20);
-    EXPECT_EQ(0, SlowConstructor::constructed);
-
-    pool.Start();
-    pool.JoinAll();
-    EXPECT_EQ(1, SlowConstructor::constructed);
-  }
-}
 
 namespace {
 

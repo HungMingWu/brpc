@@ -45,10 +45,6 @@
 #include "butil/third_party/symbolize/symbolize.h"
 #endif
 
-#if defined(OS_ANDROID)
-#include "butil/threading/platform_thread.h"
-#endif
-
 namespace butil {
 namespace debug {
 
@@ -221,7 +217,7 @@ void DebugBreak() {
 #else
     volatile int go = 0;
     while (!go) {
-      butil::PlatformThread::Sleep(butil::TimeDelta::FromMilliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 #endif
   }

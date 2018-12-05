@@ -18,7 +18,6 @@
 #include <strings.h>
 #include "butil/string_printf.h"
 #include "butil/logging.h"
-#include "butil/strings/string_number_conversions.h"
 #include "brpc/adaptive_max_concurrency.h"
 
 namespace brpc {
@@ -49,21 +48,23 @@ inline bool CompareStringPieceWithoutCase(
 }
 
 AdaptiveMaxConcurrency::AdaptiveMaxConcurrency(const butil::StringPiece& value)
-    : _max_concurrency(0) {
-    int max_concurrency = 0;
-    if (butil::StringToInt(value, &max_concurrency)) {
-        operator=(max_concurrency);
-    } else {
+{
+    try {
+      std::string str(value.data(), value.size());
+      _max_concurrency = std::stoi(str);
+      operator=(_max_concurrency);
+    } catch(...) {
         value.CopyToString(&_value);
         _max_concurrency = -1;
     }
 }
 
 void AdaptiveMaxConcurrency::operator=(const butil::StringPiece& value) {
-    int max_concurrency = 0;
-    if (butil::StringToInt(value, &max_concurrency)) {
-        return operator=(max_concurrency);
-    } else {
+    try {
+      std::string str(value.data(), value.size());
+      _max_concurrency = std::stoi(str);
+      operator=(_max_concurrency);
+    } catch(...) {
         value.CopyToString(&_value);
         _max_concurrency = -1;
     }

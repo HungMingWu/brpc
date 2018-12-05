@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <thread>
 #include "butil/memory/singleton.h"
-#include "butil/threading/platform_thread.h"
 
 namespace butil {
 namespace internal {
@@ -24,7 +24,7 @@ intptr_t WaitForInstance(std::atomic_intptr_t * instance) {
     value = instance->load(std::memory_order_acquire);
     if (value != kBeingCreatedMarker)
       break;
-    PlatformThread::YieldCurrentThread();
+    std::this_thread::yield();
   }
   return value;
 }

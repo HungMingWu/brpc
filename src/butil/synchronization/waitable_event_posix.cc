@@ -9,7 +9,6 @@
 
 #include "butil/logging.h"
 #include "butil/synchronization/waitable_event.h"
-#include "butil/threading/thread_restrictions.h"
 #include "butil/time/time.h"
 
 // -----------------------------------------------------------------------------
@@ -157,7 +156,6 @@ void WaitableEvent::Wait() {
 }
 
 bool WaitableEvent::TimedWait(const TimeDelta& max_time) {
-  butil::ThreadRestrictions::AssertWaitAllowed();
   const TimeTicks end_time(TimeTicks::Now() + max_time);
   const bool finite_time = max_time.ToInternalValue() >= 0;
 
@@ -225,7 +223,6 @@ cmp_fst_addr(const std::pair<WaitableEvent*, unsigned> &a,
 // static
 size_t WaitableEvent::WaitMany(WaitableEvent** raw_waitables,
                                size_t count) {
-  butil::ThreadRestrictions::AssertWaitAllowed();
   DCHECK(count) << "Cannot wait on no events";
 
   // We need to acquire the locks in a globally consistent order. Thus we sort

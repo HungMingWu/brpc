@@ -60,14 +60,12 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/popen_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/at_exit_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/base64_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/big_endian_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/bits_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/hash_tables_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/linked_list_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/mru_cache_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/small_map_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/stack_container_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/cpu_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/crash_logging_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/leak_tracker_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/stack_trace_unittest.cc
@@ -77,10 +75,7 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/file_path_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/file_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_temp_dir_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/guid_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/hash_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/lazy_instance_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/md5_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/linked_ptr_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/ref_counted_memory_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/ref_counted_unittest.cc
@@ -88,7 +83,6 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/scoped_vector_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/singleton_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/file_descriptor_shuffle_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/rand_util_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_clear_errno_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_generic_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/security_unittest.cc
@@ -98,7 +92,6 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/safe_sprintf_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/string16_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/stringprintf_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/string_number_conversions_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/string_piece_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/string_split_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/string_tokenizer_unittest.cc
@@ -107,21 +100,10 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/sys_string_conversions_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/utf_offset_string_conversions_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/utf_string_conversions_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/cancellation_flag_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/waitable_event_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/type_traits_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/non_thread_safe_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/platform_thread_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/simple_thread_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/thread_checker_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/thread_collision_warner_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/thread_id_name_manager_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/thread_local_storage_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/thread_local_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/watchdog_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/pr_time_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/time_unittest.cc
-    ${PROJECT_SOURCE_DIR}/test/version_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/logging_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/cacheline_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/class_name_unittest.cpp
@@ -133,12 +115,10 @@ SET(TEST_BUTIL_SOURCES
     ${PROJECT_SOURCE_DIR}/test/status_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/string_printf_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/string_splitter_unittest.cpp
-    ${PROJECT_SOURCE_DIR}/test/synchronous_event_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/temp_file_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/baidu_thread_local_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/baidu_time_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/flat_map_unittest.cpp
-    ${PROJECT_SOURCE_DIR}/test/crc32c_unittest.cc
     ${PROJECT_SOURCE_DIR}/test/iobuf_unittest.cpp
     ${PROJECT_SOURCE_DIR}/test/test_switches.cc
     ${PROJECT_SOURCE_DIR}/test/scoped_locale.cc

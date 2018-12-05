@@ -15,6 +15,7 @@
 // Author: Ge,Jun (gejun@baidu.com)
 // Date: 2012-10-08 23:53:50
 
+#include <thread>
 #include "butil/logging.h"
 
 #if !BRPC_WITH_GLOG
@@ -65,7 +66,6 @@ typedef FILE* FileHandle;
 #include "butil/strings/string_util.h"
 #include "butil/strings/stringprintf.h"
 #include "butil/strings/utf_string_conversions.h"
-#include "butil/threading/platform_thread.h"
 #if defined(OS_POSIX)
 #include "butil/errno.h"
 #include "butil/fd_guard.h"
@@ -443,7 +443,7 @@ void print_log_prefix(std::ostream& os,
         os << ' ' << std::setfill(' ') << std::setw(5) << CurrentProcessId();
     }
     os << ' ' << std::setfill(' ') << std::setw(5)
-       << butil::PlatformThread::CurrentId() << std::setfill('0');
+       << std::this_thread::get_id() << std::setfill('0');
     if (FLAGS_log_hostname) {
         butil::StringPiece hostname(butil::my_hostname());
         if (hostname.ends_with(".baidu.com")) { // make it shorter

@@ -15,7 +15,6 @@
 #include "butil/containers/doubly_buffered_data.h"
 #include "brpc/describable.h"
 #include "brpc/socket.h"
-#include "butil/strings/string_number_conversions.h"
 #include "brpc/excluded_servers.h" 
 #include "brpc/policy/weighted_round_robin_load_balancer.h"
 #include "brpc/policy/round_robin_load_balancer.h"
@@ -618,8 +617,8 @@ TEST_F(LoadBalancerTest, weighted_round_robin) {
             ptr->SetLogOff();
         }
         if ( i < 4 ) {
-            int weight_num = 0;
-            ASSERT_TRUE(butil::StringToInt(weight[i], &weight_num));
+            std::string str(weight[i]);
+            int weight_num = std::stoi(str);
             configed_weight[dummy] = weight_num;
             EXPECT_TRUE(wrrlb.AddServer(id));
         } else {

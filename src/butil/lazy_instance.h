@@ -43,7 +43,6 @@
 #include "butil/debug/leak_annotations.h"
 #include "butil/logging.h"
 #include "butil/third_party/dynamic_annotations/dynamic_annotations.h"
-#include "butil/threading/thread_restrictions.h"
 
 namespace butil {
 
@@ -149,11 +148,6 @@ class LazyInstance {
   }
 
   Type* Pointer() {
-#ifndef NDEBUG
-    // Avoid making TLS lookup on release builds.
-    if (!Traits::kAllowedToAccessOnNonjoinableThread)
-      ThreadRestrictions::AssertSingletonAllowed();
-#endif
     // If any bit in the created mask is true, the instance has already been
     // fully constructed.
     static const intptr_t kLazyInstanceCreatedMask =

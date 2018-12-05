@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <thread>
 #include "butil/lazy_instance.h"
 
 #include "butil/at_exit.h"
 #include "butil/basictypes.h"
-#include "butil/threading/platform_thread.h"
 #include "butil/third_party/dynamic_annotations/dynamic_annotations.h"
 
 namespace butil {
@@ -33,7 +33,7 @@ bool NeedsLazyInstance(std::atomic_intptr_t* state) {
   // the associated data (buf_). Pairing Release_Store is in
   // CompleteLazyInstance().
   while (state->load(std::memory_order_acquire) == kLazyInstanceStateCreating) {
-    PlatformThread::YieldCurrentThread();
+    std::this_thread::yield();
   }
   // Someone else created the instance.
   return false;

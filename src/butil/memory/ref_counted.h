@@ -13,7 +13,6 @@
 #ifndef NDEBUG
 #include "butil/logging.h"
 #endif
-#include "butil/threading/thread_collision_warner.h"
 
 namespace butil {
 
@@ -73,7 +72,6 @@ class BUTIL_EXPORT RefCountedBase {
 #else
   mutable bool in_dtor_;
 #endif
-  DFAKE_MUTEX(add_release_);
 
   DISALLOW_COPY_AND_ASSIGN(RefCountedBase);
 };

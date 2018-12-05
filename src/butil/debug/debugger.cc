@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <thread>
 #include "butil/debug/debugger.h"
 #include "butil/logging.h"
-#include "butil/threading/platform_thread.h"
 
 namespace butil {
 namespace debug {
@@ -24,7 +24,7 @@ bool WaitForDebugger(int wait_seconds, bool silent) {
         BreakDebugger();
       return true;
     }
-    PlatformThread::Sleep(TimeDelta::FromMilliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   return false;
 }

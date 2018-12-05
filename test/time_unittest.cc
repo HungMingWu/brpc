@@ -5,11 +5,11 @@
 #include "butil/time/time.h"
 
 #include <time.h>
+#include <thread>
 
 #include "butil/compiler_specific.h"
 #include "butil/logging.h"
 #include "butil/strings/stringprintf.h"
-#include "butil/threading/platform_thread.h"
 #include "butil/build_config.h"
 #include <gtest/gtest.h>
 
@@ -618,7 +618,7 @@ TEST_F(TimeTest, FromLocalExplodedCrashOnAndroid) {
 TEST(TimeTicks, Deltas) {
   for (int index = 0; index < 50; index++) {
     TimeTicks ticks_start = TimeTicks::Now();
-    butil::PlatformThread::Sleep(butil::TimeDelta::FromMilliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     TimeTicks ticks_stop = TimeTicks::Now();
     TimeDelta delta = ticks_stop - ticks_start;
     // Note:  Although we asked for a 10ms sleep, if the
@@ -699,7 +699,7 @@ TEST(TimeTicks, MAYBE_ThreadNow) {
     // Make sure that ThreadNow value is non-zero.
     EXPECT_GT(begin_thread, TimeTicks());
     // Sleep for 10 milliseconds to get the thread de-scheduled.
-    butil::PlatformThread::Sleep(butil::TimeDelta::FromMilliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     TimeTicks end_thread = TimeTicks::ThreadNow();
     TimeTicks end = TimeTicks::Now();
     TimeDelta delta = end - begin;

@@ -19,7 +19,6 @@
 #include "butil/fast_rand.h"
 #include "brpc/socket.h"
 #include "brpc/policy/weighted_round_robin_load_balancer.h"
-#include "butil/strings/string_number_conversions.h"
 
 namespace {
 
@@ -75,9 +74,9 @@ bool WeightedRoundRobinLoadBalancer::Add(Servers& bg, const ServerId& id) {
     if (bg.server_list.capacity() < 128) {
         bg.server_list.reserve(128);
     }
-    uint32_t weight = 0;
-    if (butil::StringToUint(id.tag, &weight) && 
-        weight > 0) {
+    try { 
+	std::string str(id.tag.data(), id.tag.size());
+	uint32_t weight = std::stoi(str);
         bool insert_server = 
                  bg.server_map.emplace(id.id, bg.server_list.size()).second;
         if (insert_server) {
@@ -85,7 +84,7 @@ bool WeightedRoundRobinLoadBalancer::Add(Servers& bg, const ServerId& id) {
             bg.weight_sum += weight;
             return true;
         }
-    } else {
+    } catch(...) {
         LOG(ERROR) << "Invalid weight is set: " << id.tag;
     }
     return false;
